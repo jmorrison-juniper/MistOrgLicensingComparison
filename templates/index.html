@@ -371,19 +371,6 @@
                 header.innerHTML += `<th>${org.org_name}</th>`;
             });
             
-            // Collect all license types
-            const licenseTypes = new Set();
-            comparisonData.forEach(org => {
-                if (org.licenses) {
-                    // Handle different API response formats
-                    if (Array.isArray(org.licenses)) {
-                        org.licenses.forEach(lic => licenseTypes.add(lic.type || lic.sku));
-                    } else if (typeof org.licenses === 'object') {
-                        Object.keys(org.licenses).forEach(key => licenseTypes.add(key));
-                    }
-                }
-            });
-            
             // Build body
             body.innerHTML = '';
             
@@ -401,27 +388,42 @@
             inventoryRows.forEach(row => {
                 let tr = `<tr><td>${row.label}</td>`;
                 comparisonData.forEach(org => {
-                    const value = org.inventory ? (org.inventory[row.key] || 0) : '-';
+                    const value = org.inventory ? (org.inventory[row.key] || 0).toLocaleString() : '-';
                     tr += `<td>${value}</td>`;
                 });
                 tr += '</tr>';
                 body.innerHTML += tr;
             });
             
-            // Add licenses header
-            body.innerHTML += `<tr class="license-type-header"><td colspan="${comparisonData.length + 1}"><strong>Licenses</strong></td></tr>`;
+            // Add license summary header
+            body.innerHTML += `<tr class="license-type-header"><td colspan="${comparisonData.length + 1}"><strong>License Summary (Entitled / Used)</strong></td></tr>`;
             
-            // License rows
-            licenseTypes.forEach(licType => {
+            // Collect all license types from entitled and summary
+            const licenseTypes = new Set();
+            comparisonData.forEach(org => {
+                if (org.licenses) {
+                    if (org.licenses.entitled) {
+                        Object.keys(org.licenses.entitled).forEach(key => licenseTypes.add(key));
+                    }
+                    if (org.licenses.summary) {
+                        Object.keys(org.licenses.summary).forEach(key => licenseTypes.add(key));
+                    }
+                }
+            });
+            
+            // Sort license types alphabetically
+            const sortedLicenseTypes = Array.from(licenseTypes).sort();
+            
+            // License summary rows
+            sortedLicenseTypes.forEach(licType => {
                 let tr = `<tr><td>${licType}</td>`;
                 comparisonData.forEach(org => {
                     let value = '-';
                     if (org.licenses) {
-                        if (Array.isArray(org.licenses)) {
-                            const lic = org.licenses.find(l => (l.type || l.sku) === licType);
-                            value = lic ? (lic.quantity || lic.count || 0) : '-';
-                        } else if (org.licenses[licType] !== undefined) {
-                            value = org.licenses[licType];
+                        const entitled = (org.licenses.entitled && org.licenses.entitled[licType]) || 0;
+                        const used = (org.licenses.summary && org.licenses.summary[licType]) || 0;
+                        if (entitled > 0 || used > 0) {
+                            value = `${entitled.toLocaleString()} / ${used.toLocaleString()}`;
                         }
                     }
                     tr += `<td>${value}</td>`;
