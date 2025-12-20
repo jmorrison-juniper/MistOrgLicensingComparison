@@ -59,6 +59,13 @@ Helps administrators visualize and compare license allocations, device counts, a
 - Publishes to ghcr.io/jmorrison-juniper/mistorglicensingcomparison
 - Multi-arch builds: linux/amd64, linux/arm64
 
+## Container Development
+- Local builds: Use `docker build -t mist-licensing .` (builds for native arch)
+- Apple Silicon Macs: Native arm64 builds, no emulation needed
+- For cross-platform testing: `docker buildx build --platform linux/amd64 -t mist-licensing .`
+- Use `docker compose up` for local development with .env file
+- Production images from ghcr.io support both amd64 and arm64
+
 ## Release Management
 - Use YY.MM.DD.HH.MM format for version tags
 - Create annotated tags: `git tag -a 25.12.19.12.00 -m "Release notes"`
