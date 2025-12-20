@@ -46,9 +46,6 @@ class MistConnection:
             del os.environ['MIST_APITOKEN']
         
         try:
-            # Create session
-            self.apisession = mistapi.APISession(host=f"https://{self.host}")
-            
             # Parse tokens (support comma-separated)
             token_list = [t.strip() for t in api_token.split(',') if t.strip()]
             
@@ -58,7 +55,13 @@ class MistConnection:
             # Test first working token
             for idx, token in enumerate(token_list):
                 try:
-                    self.apisession.login_with_token(token)
+                    # Create session with token directly (mistapi 0.58+ API)
+                    self.apisession = mistapi.APISession(
+                        host=self.host,
+                        apitoken=token,
+                        console_log_level=30,  # WARNING level
+                        show_cli_notif=False
+                    )
                     
                     # Test the token
                     test_response = mistapi.api.v1.self.self.getSelf(self.apisession)
@@ -114,11 +117,16 @@ class MistConnection:
                 orgs = []
                 if 'privileges' in data:
                     for priv in data['privileges']:
-                        if 'org_id' in priv and 'org_name' in priv:
+                        # Handle different privilege structures
+                        org_id = priv.get('org_id')
+                        # org_name can be in 'org_name' or 'name' field
+                        org_name = priv.get('org_name') or priv.get('name', 'Unknown')
+                        if org_id:
                             orgs.append({
-                                'id': priv['org_id'],
-                                'name': priv['org_name'],
-                                'role': priv.get('role', 'unknown')
+                                'id': org_id,
+                                'name': org_name,
+                                'role': priv.get('role', 'unknown'),
+                                'scope': priv.get('scope', 'unknown')
                             })
                 return orgs
             else:
@@ -159,7 +167,7 @@ class MistConnection:
         target_org = org_id or self.org_id
         try:
             # Get license summary
-            response = mistapi.api.v1.orgs.licenses.getOrgLicencesSummary(
+            response = mistapi.api.v1.orgs.licenses.getOrgLicensesSummary(
                 self.apisession, target_org
             )
             
@@ -183,7 +191,7 @@ class MistConnection:
         """
         target_org = org_id or self.org_id
         try:
-            response = mistapi.api.v1.orgs.licenses.getOrgLicencesBySite(
+            response = mistapi.api.v1.orgs.licenses.getOrgLicensesBySite(
                 self.apisession, target_org
             )
             

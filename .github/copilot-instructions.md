@@ -60,11 +60,13 @@ Helps administrators visualize and compare license allocations, device counts, a
 - Multi-arch builds: linux/amd64, linux/arm64
 
 ## Container Development
-- Local builds: Use `docker build -t mist-licensing .` (builds for native arch)
+- Local builds: Use `podman build -t mist-licensing .` (builds for native arch)
 - Apple Silicon Macs: Native arm64 builds, no emulation needed
-- For cross-platform testing: `docker buildx build --platform linux/amd64 -t mist-licensing .`
-- Use `docker compose up` for local development with .env file
+- For cross-platform testing: `podman build --platform linux/amd64 -t mist-licensing .`
+- Use `podman compose up` for local development with .env file
 - Production images from ghcr.io support both amd64 and arm64
+- Container engine: Podman (not Docker) on local dev machines
+- Test container: `podman run -d --name mist-licensing-test -p 5001:5000 --env-file .env mist-licensing`
 
 ## Release Management
 - Use YY.MM.DD.HH.MM format for version tags

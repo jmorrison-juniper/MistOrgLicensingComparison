@@ -3,3 +3,4 @@ gunicorn>=21.0.0
 mistapi>=0.58.0
 python-dotenv>=1.1.0
 requests>=2.31.0
+keyring>=25.0.0
