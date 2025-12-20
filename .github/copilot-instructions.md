@@ -51,7 +51,7 @@ Helps administrators visualize and compare license allocations, device counts, a
   - `mistapi.api.v1.orgs.inventory.getOrgInventory()` - Device inventory
 
 ## Dependency Management
-- `mistapi` requires `python-dotenv>=0.15.0,<0.17` (not 1.0+)
+- `mistapi` requires `python-dotenv>=1.1.0`
 - Always check for dependency conflicts when updating
 
 ## CI/CD
