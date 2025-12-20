@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mist-licensing
+    ports:
+      - "5000:5000"
+    environment:
+      - MIST_API_TOKEN=${MIST_API_TOKEN}
+      - MIST_ORG_ID=${MIST_ORG_ID:-}
+      - MIST_HOST=${MIST_HOST:-api.mist.com}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - PORT=5000
+    env_file:
+      - .env
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s

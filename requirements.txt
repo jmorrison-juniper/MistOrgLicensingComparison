@@ -1,0 +1,5 @@
+flask>=3.0.0
+gunicorn>=21.0.0
+mistapi>=0.58.0
+python-dotenv>=0.15.0,<0.17
+requests>=2.31.0
