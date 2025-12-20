@@ -56,10 +56,15 @@ Helps administrators visualize and compare license allocations, device counts, a
 
 ## CI/CD
 - GitHub Actions builds on push to main and tags
-- Publishes to ghcr.io
+- Publishes to ghcr.io/jmorrison-juniper/mistorglicensingcomparison
 - Multi-arch builds: linux/amd64, linux/arm64
 
 ## Release Management
 - Use YY.MM.DD.HH.MM format for version tags
 - Create annotated tags: `git tag -a 25.12.19.12.00 -m "Release notes"`
 - Push tags to trigger builds: `git push origin 25.12.19.12.00`
+
+## Git Configuration
+- Repository: https://github.com/jmorrison-juniper/MistOrgLicensingComparison
+- Use `gh` CLI for GitHub operations (authenticated via keyring)
+- Git protocol: HTTPS
