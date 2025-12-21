@@ -166,7 +166,7 @@ pytest
 
 ## License
 
-MIT License - See [LICENSE](LICENSE) for details.
+Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International - See [LICENSE](LICENSE) for details.
 
 ## Contributing
 
