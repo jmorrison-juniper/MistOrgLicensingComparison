@@ -114,18 +114,18 @@ MIST_API_TOKEN=token1,token2,token3
 
 Each token's accessible organizations will be aggregated and deduplicated.
 
-## API Endpoints
+## Mist API Endpoints Used
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/` | GET | Main dashboard |
-| `/health` | GET | Health check |
-| `/api/organizations` | GET | List accessible organizations |
-| `/api/organization/<org_id>` | GET | Organization details |
-| `/api/licenses/<org_id>` | GET | License summary |
-| `/api/license-usage/<org_id>` | GET | License usage by site |
-| `/api/inventory/<org_id>` | GET | Device inventory counts |
-| `/api/compare` | POST | Compare multiple organizations |
+This application uses the following Juniper Mist API endpoints:
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /api/v1/self` | Validate API token and get user info |
+| `GET /api/v1/orgs/{org_id}` | Get organization details |
+| `GET /api/v1/orgs/{org_id}/licenses` | Get license summary (entitled, usage, amendments) |
+| `GET /api/v1/orgs/{org_id}/licenses/usages` | Get license usage breakdown by site |
+| `GET /api/v1/orgs/{org_id}/inventory` | Get device inventory |
+| `GET /api/v1/orgs/{org_id}/inventory/count` | Get device inventory counts by type |
 
 ## Multi-Architecture Support
 
