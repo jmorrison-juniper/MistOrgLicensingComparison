@@ -208,6 +208,9 @@
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h5 class="mb-0"><i class="bi bi-clipboard-data me-2"></i>License Comparison</h5>
                         <div>
+                            <button class="btn btn-sm btn-outline-magenta me-2" onclick="addManualOrgRow()" id="addManualBtn">
+                                <i class="bi bi-plus-circle me-1"></i>Add Manual Org
+                            </button>
                             <button class="btn btn-sm btn-outline-light me-2" onclick="exportCSV()" id="exportBtn" disabled>
                                 <i class="bi bi-download me-1"></i>Export CSV
                             </button>
@@ -283,6 +286,8 @@
         let purchasedLicenses = {};
         let lastLicenseTotals = {};
         let lastSortedLicenseTypes = [];
+        let manualOrgs = []; // Stores manually entered org data
+        let manualOrgCounter = 0; // Counter for unique manual org IDs
 
         // License type descriptions for tooltips
         // ✓ = From official Juniper Mist documentation
@@ -606,18 +611,255 @@
             container.classList.remove('d-none');
         }
 
-        // Export to CSV
-        function exportCSV() {
-            if (comparisonData.length === 0) return;
+        // Add a manual org row with editable fields
+        function addManualOrgRow() {
+            // Make sure comparison results are visible
+            document.getElementById('comparisonPlaceholder').classList.add('d-none');
+            document.getElementById('comparisonResults').classList.remove('d-none');
             
-            let csv = 'Metric,' + comparisonData.map(o => `"${o.org_name}"`).join(',') + '\n';
+            const body = document.getElementById('tableBody');
+            const header = document.getElementById('tableHeader');
             
-            // Inventory
-            ['aps', 'switches', 'gateways', 'total'].forEach(key => {
-                const label = key.charAt(0).toUpperCase() + key.slice(1);
-                csv += label + ',' + comparisonData.map(o => o.inventory ? (o.inventory[key] || 0) : '').join(',') + '\n';
+            // If no header exists yet, create a basic one
+            if (!header.innerHTML || header.innerHTML.trim() === '') {
+                header.innerHTML = '<th>Organization</th><th>APs</th><th>Switches</th><th>Gateways</th><th>Total Devices</th>';
+                // Add common license types if none exist
+                const defaultLicTypes = ['SUB-MAN', 'SUB-VNA', 'SUB-AST', 'SUB-ENG', 'SUB-PMA', 'SUB-EX48', 'SUB-SVNA', 'SUB-WAN', 'SUB-WVNA'];
+                defaultLicTypes.forEach(licType => {
+                    const desc = getLicenseDescription(licType);
+                    header.innerHTML += `<th data-bs-toggle="tooltip" data-bs-placement="top" title="${desc}" style="cursor: help;">${licType}</th>`;
+                });
+                lastSortedLicenseTypes = defaultLicTypes;
+                // Initialize tooltips
+                const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+                tooltipTriggerList.forEach(el => new bootstrap.Tooltip(el));
+            }
+            
+            manualOrgCounter++;
+            const manualId = `manual-${manualOrgCounter}`;
+            
+            // Get license types from header
+            const headerCells = header.querySelectorAll('th');
+            const licenseTypes = [];
+            for (let i = 5; i < headerCells.length; i++) {
+                licenseTypes.push(headerCells[i].textContent.trim());
+            }
+            
+            // Create editable row
+            let tr = document.createElement('tr');
+            tr.id = manualId;
+            tr.className = 'manual-org-row';
+            tr.style.backgroundColor = '#2a2a3d';
+            
+            // Org name (editable)
+            tr.innerHTML = `
+                <td>
+                    <div class="d-flex align-items-center">
+                        <input type="text" class="form-control form-control-sm me-2" 
+                               id="${manualId}-name" placeholder="Org Name" 
+                               style="width: 120px;" value="Manual Org ${manualOrgCounter}"
+                               onchange="recalculateTotals()">
+                        <button class="btn btn-sm btn-outline-danger" onclick="removeManualOrg('${manualId}')" title="Remove">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </td>
+                <td><input type="number" class="form-control form-control-sm" id="${manualId}-aps" 
+                           placeholder="0" min="0" style="width: 70px;" onchange="recalculateTotals()"></td>
+                <td><input type="number" class="form-control form-control-sm" id="${manualId}-switches" 
+                           placeholder="0" min="0" style="width: 70px;" onchange="recalculateTotals()"></td>
+                <td><input type="number" class="form-control form-control-sm" id="${manualId}-gateways" 
+                           placeholder="0" min="0" style="width: 70px;" onchange="recalculateTotals()"></td>
+                <td><input type="number" class="form-control form-control-sm" id="${manualId}-total" 
+                           placeholder="0" min="0" style="width: 70px;" onchange="recalculateTotals()"></td>
+            `;
+            
+            // Add license columns with usage/entitled format
+            licenseTypes.forEach(licType => {
+                tr.innerHTML += `
+                    <td>
+                        <input type="text" class="form-control form-control-sm" 
+                               id="${manualId}-${licType}" placeholder="0/0" 
+                               style="width: 80px;" pattern="\\d+/\\d+"
+                               title="Format: usage/entitled (e.g., 100/150)"
+                               onchange="recalculateTotals()">
+                    </td>
+                `;
             });
             
+            // Insert before totals row (or at end if no totals)
+            const totalsRow = body.querySelector('.license-type-header');
+            if (totalsRow) {
+                body.insertBefore(tr, totalsRow);
+            } else {
+                body.appendChild(tr);
+            }
+            
+            // Store manual org reference
+            manualOrgs.push({ id: manualId, licenseTypes: licenseTypes });
+            
+            // Recalculate totals
+            recalculateTotals();
+            
+            // Enable export button
+            document.getElementById('exportBtn').disabled = false;
+            
+            // Show purchased licenses card if hidden
+            document.getElementById('purchasedLicensesCard').classList.remove('d-none');
+            renderPurchasedInputs(licenseTypes.length > 0 ? licenseTypes : lastSortedLicenseTypes);
+        }
+
+        // Remove a manual org row
+        function removeManualOrg(manualId) {
+            const row = document.getElementById(manualId);
+            if (row) row.remove();
+            manualOrgs = manualOrgs.filter(o => o.id !== manualId);
+            recalculateTotals();
+        }
+
+        // Parse "usage/entitled" format, returns {used, entitled}
+        function parseUsageEntitled(value) {
+            if (!value || value.trim() === '') return { used: 0, entitled: 0 };
+            const parts = value.split('/');
+            if (parts.length === 2) {
+                return {
+                    used: parseInt(parts[0].trim()) || 0,
+                    entitled: parseInt(parts[1].trim()) || 0
+                };
+            }
+            // If just a number, treat as both used and entitled
+            const num = parseInt(value.trim()) || 0;
+            return { used: num, entitled: num };
+        }
+
+        // Recalculate totals including manual orgs
+        function recalculateTotals() {
+            const body = document.getElementById('tableBody');
+            const header = document.getElementById('tableHeader');
+            
+            // Get license types from header
+            const headerCells = header.querySelectorAll('th');
+            const licenseTypes = [];
+            for (let i = 5; i < headerCells.length; i++) {
+                licenseTypes.push(headerCells[i].textContent.trim());
+            }
+            
+            // Initialize totals from API data
+            let totalAPs = 0, totalSwitches = 0, totalGateways = 0, totalDevices = 0;
+            const licenseTotals = {};
+            licenseTypes.forEach(lt => {
+                licenseTotals[lt] = { entitled: 0, used: 0 };
+            });
+            
+            // Add API org data
+            comparisonData.forEach(org => {
+                totalAPs += org.inventory?.aps || 0;
+                totalSwitches += org.inventory?.switches || 0;
+                totalGateways += org.inventory?.gateways || 0;
+                totalDevices += org.inventory?.total || 0;
+                
+                licenseTypes.forEach(licType => {
+                    const entitled = (org.licenses?.entitled && org.licenses.entitled[licType]) || 0;
+                    const used = (org.licenses?.summary && org.licenses.summary[licType]) || 0;
+                    licenseTotals[licType].entitled += entitled;
+                    licenseTotals[licType].used += used;
+                });
+            });
+            
+            // Add manual org data
+            manualOrgs.forEach(manualOrg => {
+                const id = manualOrg.id;
+                totalAPs += parseInt(document.getElementById(`${id}-aps`)?.value) || 0;
+                totalSwitches += parseInt(document.getElementById(`${id}-switches`)?.value) || 0;
+                totalGateways += parseInt(document.getElementById(`${id}-gateways`)?.value) || 0;
+                totalDevices += parseInt(document.getElementById(`${id}-total`)?.value) || 0;
+                
+                licenseTypes.forEach(licType => {
+                    const input = document.getElementById(`${id}-${licType}`);
+                    if (input) {
+                        const parsed = parseUsageEntitled(input.value);
+                        licenseTotals[licType].used += parsed.used;
+                        licenseTotals[licType].entitled += parsed.entitled;
+                    }
+                });
+            });
+            
+            // Update or create totals row
+            let totalsRow = body.querySelector('.license-type-header');
+            if (!totalsRow) {
+                totalsRow = document.createElement('tr');
+                totalsRow.className = 'license-type-header';
+                body.appendChild(totalsRow);
+            }
+            
+            totalsRow.innerHTML = `
+                <td><strong>TOTAL</strong></td>
+                <td><strong>${totalAPs.toLocaleString()}</strong></td>
+                <td><strong>${totalSwitches.toLocaleString()}</strong></td>
+                <td><strong>${totalGateways.toLocaleString()}</strong></td>
+                <td><strong>${totalDevices.toLocaleString()}</strong></td>
+            `;
+            
+            licenseTypes.forEach(licType => {
+                const lt = licenseTotals[licType];
+                if (lt.entitled > 0 || lt.used > 0) {
+                    totalsRow.innerHTML += `<td><strong>${lt.used.toLocaleString()} / ${lt.entitled.toLocaleString()}</strong></td>`;
+                } else {
+                    totalsRow.innerHTML += `<td>-</td>`;
+                }
+            });
+            
+            // Update saved totals for remaining calculation
+            lastLicenseTotals = licenseTotals;
+            lastSortedLicenseTypes = licenseTypes;
+        }
+
+        // Export to CSV - exports the full table as displayed
+        function exportCSV() {
+            const header = document.getElementById('tableHeader');
+            const body = document.getElementById('tableBody');
+            
+            if (!header || !body) return;
+            
+            // Get header columns
+            const headerCells = header.querySelectorAll('th');
+            const headers = [];
+            headerCells.forEach(th => {
+                headers.push(th.textContent.trim().replace(/\n/g, ' '));
+            });
+            
+            let csv = headers.map(h => `"${h}"`).join(',') + '\n';
+            
+            // Get all rows from tbody
+            const rows = body.querySelectorAll('tr');
+            rows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                const rowData = [];
+                
+                cells.forEach((td, idx) => {
+                    // Check if cell contains an input
+                    const input = td.querySelector('input');
+                    let text;
+                    if (input) {
+                        text = input.value || '';
+                    } else {
+                        // Get text content, clean it up
+                        text = td.textContent.trim().replace(/\n/g, ' ').replace(/\s+/g, ' ');
+                    }
+                    // Prefix with space to prevent Excel date interpretation (e.g., "10/50" -> date)
+                    // Skip first column (org name) which won't be misinterpreted
+                    if (idx > 0 && text.includes('/')) {
+                        text = ' ' + text;
+                    }
+                    rowData.push(`"${text}"`);
+                });
+                
+                if (rowData.length > 0) {
+                    csv += rowData.join(',') + '\n';
+                }
+            });
+            
+            // Create and trigger download
             const blob = new Blob([csv], { type: 'text/csv' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -703,15 +945,26 @@
             const subAiComponents = ['SUB-MAN', 'SUB-VNA', 'SUB-AST', 'SUB-ENG', 'SUB-PMA'];
             const subAiCount = purchasedLicenses['SUB-AI'] || 0;
             
-            // Build remaining row
-            let remainingRow = `<tr id="remainingRow" style="background-color: #1a3a1a; border-top: 2px solid var(--tmobile-magenta);">`;
-            remainingRow += `<td><strong><i class="bi bi-box-arrow-down me-1"></i>REMAINING (Purchased - Entitled)</strong></td>`;
-            remainingRow += `<td>-</td>`; // APs
-            remainingRow += `<td>-</td>`; // Switches
-            remainingRow += `<td>-</td>`; // Gateways
-            remainingRow += `<td>-</td>`; // Total Devices
-            
             let hasAnyPurchased = Object.keys(purchasedLicenses).length > 0;
+            
+            if (!hasAnyPurchased) {
+                alert('Please enter at least one purchased license count.');
+                return;
+            }
+            
+            // Build remaining row using DOM (not innerHTML) to preserve other elements
+            const remainingRowEl = document.createElement('tr');
+            remainingRowEl.id = 'remainingRow';
+            remainingRowEl.style.backgroundColor = '#1a3a1a';
+            remainingRowEl.style.borderTop = '2px solid var(--tmobile-magenta)';
+            
+            remainingRowEl.innerHTML = `
+                <td><strong><i class="bi bi-box-arrow-down me-1"></i>REMAINING (Purchased - Entitled)</strong></td>
+                <td>-</td>
+                <td>-</td>
+                <td>-</td>
+                <td>-</td>
+            `;
             
             lastSortedLicenseTypes.forEach(licType => {
                 const lt = lastLicenseTotals[licType] || { used: 0, entitled: 0 };
@@ -724,24 +977,23 @@
                     purchased += subAiCount;
                 }
                 
+                const td = document.createElement('td');
                 if (purchased > 0) {
                     // Use ENTITLED (not used) - remaining = purchased - total entitled across orgs
                     const remaining = purchased - lt.entitled;
                     const colorClass = remaining >= 0 ? 'text-success' : 'text-danger';
                     const icon = remaining >= 0 ? 'bi-check-circle' : 'bi-exclamation-triangle';
-                    remainingRow += `<td class="${colorClass}"><strong><i class="bi ${icon} me-1"></i>${remaining.toLocaleString()}</strong></td>`;
+                    td.className = colorClass;
+                    td.innerHTML = `<strong><i class="bi ${icon} me-1"></i>${remaining.toLocaleString()}</strong>`;
                 } else {
-                    remainingRow += `<td class="text-muted">-</td>`;
+                    td.className = 'text-muted';
+                    td.textContent = '-';
                 }
+                remainingRowEl.appendChild(td);
             });
             
-            remainingRow += '</tr>';
-            
-            if (hasAnyPurchased) {
-                body.innerHTML += remainingRow;
-            } else {
-                alert('Please enter at least one purchased license count.');
-            }
+            // Append to body (after totals row)
+            body.appendChild(remainingRowEl);
         }
     </script>
 </body>
