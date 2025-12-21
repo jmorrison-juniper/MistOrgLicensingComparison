@@ -8,74 +8,94 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
     <style>
         :root {
-            --magenta: #E20074;
-            --magenta-dark: #B8005D;
-            --magenta-light: #FF1493;
+            --tmobile-magenta: #E20074;
+            --tmobile-magenta-hover: #C00062;
         }
         
         body {
-            background-color: #1a1a2e;
+            background-color: #1a1a1a;
+            color: #e0e0e0;
             min-height: 100vh;
         }
         
         .navbar {
-            background-color: #16213e !important;
-            border-bottom: 2px solid var(--magenta);
+            background-color: #2d2d2d !important;
+            border-bottom: 3px solid var(--tmobile-magenta);
         }
         
         .navbar-brand {
-            color: var(--magenta) !important;
+            color: var(--tmobile-magenta) !important;
             font-weight: bold;
         }
         
+        .btn-primary {
+            background-color: var(--tmobile-magenta);
+            border-color: var(--tmobile-magenta);
+        }
+        
+        .btn-primary:hover {
+            background-color: var(--tmobile-magenta-hover);
+            border-color: var(--tmobile-magenta-hover);
+        }
+        
         .btn-magenta {
-            background-color: var(--magenta);
-            border-color: var(--magenta);
+            background-color: var(--tmobile-magenta);
+            border-color: var(--tmobile-magenta);
             color: white;
         }
         
         .btn-magenta:hover {
-            background-color: var(--magenta-dark);
-            border-color: var(--magenta-dark);
+            background-color: var(--tmobile-magenta-hover);
+            border-color: var(--tmobile-magenta-hover);
             color: white;
         }
         
         .btn-outline-magenta {
-            border-color: var(--magenta);
-            color: var(--magenta);
+            border-color: var(--tmobile-magenta);
+            color: var(--tmobile-magenta);
         }
         
         .btn-outline-magenta:hover {
-            background-color: var(--magenta);
+            background-color: var(--tmobile-magenta);
             color: white;
         }
         
         .card {
-            background-color: #16213e;
-            border: 1px solid #2a2a4a;
+            background-color: #2d2d2d;
+            border: 1px solid #404040;
         }
         
         .card-header {
-            background-color: #1a1a3e;
-            border-bottom: 1px solid var(--magenta);
+            background-color: #363636;
+            border-bottom: 2px solid var(--tmobile-magenta);
+            font-weight: 600;
         }
         
         .table {
+            color: #e0e0e0;
             --bs-table-bg: transparent;
         }
         
+        .table-hover tbody tr:hover {
+            background-color: #363636;
+        }
+        
         .table thead th {
-            background-color: #1a1a3e;
-            border-bottom: 2px solid var(--magenta);
-            color: var(--magenta);
+            background-color: #363636;
+            border-bottom: 2px solid var(--tmobile-magenta);
+            color: var(--tmobile-magenta);
         }
         
         .org-checkbox {
-            accent-color: var(--magenta);
+            accent-color: var(--tmobile-magenta);
+        }
+        
+        .spinner-border {
+            color: var(--tmobile-magenta);
         }
         
         .spinner-magenta {
-            color: var(--magenta);
+            color: var(--tmobile-magenta);
         }
         
         .license-card {
@@ -87,34 +107,34 @@
         }
         
         .badge-magenta {
-            background-color: var(--magenta);
+            background-color: var(--tmobile-magenta);
         }
         
         .progress-bar-magenta {
-            background-color: var(--magenta);
+            background-color: var(--tmobile-magenta);
         }
         
         .text-magenta {
-            color: var(--magenta) !important;
+            color: var(--tmobile-magenta) !important;
         }
         
         .border-magenta {
-            border-color: var(--magenta) !important;
+            border-color: var(--tmobile-magenta) !important;
         }
         
         #orgList .list-group-item {
-            background-color: #16213e;
-            border-color: #2a2a4a;
+            background-color: #2d2d2d;
+            border-color: #404040;
             cursor: pointer;
         }
         
         #orgList .list-group-item:hover {
-            background-color: #1a1a3e;
+            background-color: #363636;
         }
         
         #orgList .list-group-item.selected {
-            border-left: 3px solid var(--magenta);
-            background-color: #1a1a3e;
+            border-left: 3px solid var(--tmobile-magenta);
+            background-color: #363636;
         }
         
         .comparison-table th {
@@ -124,7 +144,7 @@
         }
         
         .license-type-header {
-            background-color: var(--magenta) !important;
+            background-color: var(--tmobile-magenta) !important;
             color: white;
         }
     </style>
@@ -144,41 +164,46 @@
     </nav>
 
     <div class="container-fluid mt-4">
-        <div class="row">
-            <!-- Organization Selection Panel -->
-            <div class="col-md-3">
+        <!-- Organization Selection Panel - Full Width Above -->
+        <div class="row mb-4">
+            <div class="col-12">
                 <div class="card">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h5 class="mb-0"><i class="bi bi-building me-2"></i>Organizations</h5>
-                        <button class="btn btn-sm btn-outline-magenta" onclick="refreshOrganizations()">
-                            <i class="bi bi-arrow-clockwise"></i>
-                        </button>
+                        <div class="d-flex align-items-center">
+                            <button class="btn btn-sm btn-outline-light me-2" onclick="selectAllOrgs()">
+                                <i class="bi bi-check-all me-1"></i>Select All
+                            </button>
+                            <button id="compareBtn" class="btn btn-magenta me-2" onclick="compareSelected()" disabled>
+                                <i class="bi bi-bar-chart-fill me-2"></i>Compare Selected (<span id="selectedCount">0</span>)
+                            </button>
+                            <button class="btn btn-sm btn-outline-magenta" onclick="refreshOrganizations()">
+                                <i class="bi bi-arrow-clockwise"></i>
+                            </button>
+                        </div>
                     </div>
-                    <div class="card-body">
-                        <div id="orgLoading" class="text-center py-4">
+                    <div class="card-body py-2">
+                        <div id="orgLoading" class="text-center py-3">
                             <div class="spinner-border spinner-magenta" role="status">
                                 <span class="visually-hidden">Loading...</span>
                             </div>
-                            <p class="mt-2 text-muted">Loading organizations...</p>
+                            <span class="ms-2 text-muted">Loading organizations...</span>
                         </div>
-                        <div id="orgList" class="list-group list-group-flush d-none">
-                            <!-- Organizations populated here -->
+                        <div id="orgList" class="d-none" style="display: flex !important; flex-wrap: wrap; gap: 0.5rem;">
+                            <!-- Organizations populated here as inline badges/buttons -->
                         </div>
-                        <div id="orgError" class="alert alert-danger d-none">
+                        <div id="orgError" class="alert alert-danger d-none mb-0">
                             <i class="bi bi-exclamation-triangle me-2"></i>
                             <span id="orgErrorMessage"></span>
                         </div>
                     </div>
-                    <div class="card-footer">
-                        <button id="compareBtn" class="btn btn-magenta w-100" onclick="compareSelected()" disabled>
-                            <i class="bi bi-bar-chart-fill me-2"></i>Compare Selected (<span id="selectedCount">0</span>)
-                        </button>
-                    </div>
                 </div>
             </div>
+        </div>
 
-            <!-- Comparison Results Panel -->
-            <div class="col-md-9">
+        <!-- Comparison Results Panel - Full Width Below -->
+        <div class="row">
+            <div class="col-12">
                 <div class="card">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h5 class="mb-0"><i class="bi bi-clipboard-data me-2"></i>License Comparison</h5>
@@ -220,6 +245,27 @@
                     </div>
                 </div>
 
+                <!-- Purchased Licenses Input -->
+                <div id="purchasedLicensesCard" class="card mt-4 d-none">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="bi bi-calculator me-2"></i>Purchased Licenses (Optional)</h5>
+                        <button class="btn btn-sm btn-outline-light" onclick="clearPurchasedLicenses()">
+                            <i class="bi bi-x-circle me-1"></i>Clear
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted small mb-3">Enter purchased license counts to calculate remaining (unused) licenses. SUB-AI includes: MAN, VNA, AST, ENG, PMA.</p>
+                        <div class="row g-2" id="purchasedInputs">
+                            <!-- Inputs populated dynamically -->
+                        </div>
+                        <div class="mt-3">
+                            <button class="btn btn-magenta" onclick="calculateRemaining()">
+                                <i class="bi bi-calculator me-1"></i>Calculate Remaining
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Summary Cards -->
                 <div id="summaryCards" class="row mt-4 d-none">
                     <!-- Summary cards populated dynamically -->
@@ -234,6 +280,52 @@
         let organizations = [];
         let selectedOrgs = new Set();
         let comparisonData = [];
+        let purchasedLicenses = {};
+        let lastLicenseTotals = {};
+        let lastSortedLicenseTypes = [];
+
+        // License type descriptions for tooltips
+        // ✓ = From official Juniper Mist documentation
+        // ⚠ = Inferred/guessed based on naming convention
+        const licenseDescriptions = {
+            // Wireless - Documented
+            'SUB-MAN': '✓ Wireless Management - Basic AP management and monitoring',
+            'SUB-VNA': '✓ Virtual Network Assistant - AI-driven wireless insights, anomaly detection, and RCA',
+            'SUB-AST': '✓ Asset Visibility - BLE-based asset tracking and location services',
+            'SUB-ENG': '✓ Engagement Analytics - User engagement, dwell time, and proximity analytics',
+            'SUB-PMA': '✓ Premium Analytics - Advanced network analytics and reporting',
+            'SUB-AI': '✓ Mist AI Bundle - Includes MAN, VNA, AST, ENG, and PMA subscriptions',
+            
+            // Wired - Documented
+            'SUB-EX12': '✓ EX Switch (12 port) - Wired Assurance for 12-port EX switches',
+            'SUB-EX24': '✓ EX Switch (24 port) - Wired Assurance for 24-port EX switches',
+            'SUB-EX48': '✓ EX Switch (48 port) - Wired Assurance for 48-port EX switches',
+            'SUB-EX-VNA': '✓ EX Switch VNA - Virtual Network Assistant for EX switches',
+            'SUB-SVNA': '✓ Switch VNA - AI-driven wired insights for all managed switches',
+            
+            // WAN - Documented
+            'SUB-WAN': '✓ WAN Assurance - Management for SSR/SRX WAN edge devices',
+            'SUB-WVNA': '✓ WAN VNA - AI-driven WAN insights and anomaly detection',
+            
+            // Access Assurance - Documented
+            'S-CLIENT-S': '✓ Access Assurance Standard - NAC for standard client authentication',
+            'S-CLIENT-A': '✓ Access Assurance Advanced - NAC with advanced policy features',
+            
+            // Inferred/Guessed - NOT in official docs
+            'SUB-ME': '✓ Mist Edge - Subscription for Mist Edge appliances',
+            'SUB-SSR': '⚠ UNDOCUMENTED - Possibly Session Smart Router subscription',
+            'SUB-SPRM2': '⚠ UNDOCUMENTED - Possibly SSR Premium tier 2',
+            'SUB-WAN1': '⚠ UNDOCUMENTED - Possibly WAN tier 1 subscription',
+            'SUB-WAN2': '⚠ UNDOCUMENTED - Possibly WAN tier 2 subscription',
+            'SUB-WAN3': '⚠ UNDOCUMENTED - Possibly WAN tier 3 subscription',
+            'SUB-WAN4': '⚠ UNDOCUMENTED - Possibly WAN tier 4 subscription',
+            'SUB-WAN5': '⚠ UNDOCUMENTED - Possibly WAN tier 5 subscription'
+        };
+
+        // Get license description for tooltip
+        function getLicenseDescription(licType) {
+            return licenseDescriptions[licType] || `⚠ ${licType} - Unknown license type (not in documentation)`;
+        }
 
         // Initialize
         document.addEventListener('DOMContentLoaded', function() {
@@ -267,34 +359,23 @@
             }
         }
 
-        // Render organization list
+        // Render organization list as inline checkboxes
         function renderOrganizations() {
             const list = document.getElementById('orgList');
             list.innerHTML = '';
             
             organizations.forEach(org => {
                 const item = document.createElement('div');
-                item.className = 'list-group-item d-flex justify-content-between align-items-center';
+                item.className = 'form-check form-check-inline';
                 item.dataset.orgId = org.id;
                 
                 item.innerHTML = `
-                    <div class="form-check">
-                        <input class="form-check-input org-checkbox" type="checkbox" 
-                               id="org-${org.id}" onchange="toggleOrg('${org.id}')">
-                        <label class="form-check-label" for="org-${org.id}">
-                            ${org.name}
-                        </label>
-                    </div>
-                    <span class="badge bg-secondary">${org.role}</span>
+                    <input class="form-check-input org-checkbox" type="checkbox" 
+                           id="org-${org.id}" onchange="toggleOrg('${org.id}')">
+                    <label class="form-check-label" for="org-${org.id}">
+                        ${org.name} <span class="badge bg-secondary">${org.role}</span>
+                    </label>
                 `;
-                
-                item.addEventListener('click', function(e) {
-                    if (e.target.type !== 'checkbox') {
-                        const checkbox = this.querySelector('input[type="checkbox"]');
-                        checkbox.checked = !checkbox.checked;
-                        toggleOrg(org.id);
-                    }
-                });
                 
                 list.appendChild(item);
             });
@@ -304,17 +385,26 @@
 
         // Toggle organization selection
         function toggleOrg(orgId) {
-            const item = document.querySelector(`[data-org-id="${orgId}"]`);
             const checkbox = document.getElementById(`org-${orgId}`);
             
             if (checkbox.checked) {
                 selectedOrgs.add(orgId);
-                item.classList.add('selected');
             } else {
                 selectedOrgs.delete(orgId);
-                item.classList.remove('selected');
             }
             
+            updateSelectedCount();
+        }
+
+        // Select all organizations
+        function selectAllOrgs() {
+            organizations.forEach(org => {
+                const checkbox = document.getElementById(`org-${org.id}`);
+                if (checkbox && !checkbox.checked) {
+                    checkbox.checked = true;
+                    selectedOrgs.add(org.id);
+                }
+            });
             updateSelectedCount();
         }
 
@@ -360,77 +450,118 @@
             }
         }
 
-        // Render comparison table
+        // Render comparison table - orgs as rows, metrics as columns
         function renderComparison() {
             const header = document.getElementById('tableHeader');
             const body = document.getElementById('tableBody');
             
-            // Build header
-            header.innerHTML = '<th>Metric</th>';
-            comparisonData.forEach(org => {
-                header.innerHTML += `<th>${org.org_name}</th>`;
-            });
-            
-            // Build body
-            body.innerHTML = '';
-            
-            // Inventory section
-            const inventoryRows = [
-                { key: 'aps', label: 'Access Points' },
-                { key: 'switches', label: 'Switches' },
-                { key: 'gateways', label: 'Gateways' },
-                { key: 'total', label: 'Total Devices' }
-            ];
-            
-            // Add inventory header
-            body.innerHTML += `<tr class="license-type-header"><td colspan="${comparisonData.length + 1}"><strong>Device Inventory</strong></td></tr>`;
-            
-            inventoryRows.forEach(row => {
-                let tr = `<tr><td>${row.label}</td>`;
-                comparisonData.forEach(org => {
-                    const value = org.inventory ? (org.inventory[row.key] || 0).toLocaleString() : '-';
-                    tr += `<td>${value}</td>`;
-                });
-                tr += '</tr>';
-                body.innerHTML += tr;
-            });
-            
-            // Add license summary header
-            body.innerHTML += `<tr class="license-type-header"><td colspan="${comparisonData.length + 1}"><strong>License Summary (Entitled / Used)</strong></td></tr>`;
-            
-            // Collect all license types from entitled and summary
+            // Collect all license types from entitled, summary, AND amendments
             const licenseTypes = new Set();
             comparisonData.forEach(org => {
                 if (org.licenses) {
+                    // From entitled (entitlement counts)
                     if (org.licenses.entitled) {
                         Object.keys(org.licenses.entitled).forEach(key => licenseTypes.add(key));
                     }
+                    // From summary (usage counts)
                     if (org.licenses.summary) {
                         Object.keys(org.licenses.summary).forEach(key => licenseTypes.add(key));
                     }
+                    // From amendments (individual license records)
+                    if (org.licenses.amendments && Array.isArray(org.licenses.amendments)) {
+                        org.licenses.amendments.forEach(amendment => {
+                            if (amendment.type) {
+                                licenseTypes.add(amendment.type);
+                            }
+                        });
+                    }
                 }
             });
-            
-            // Sort license types alphabetically
             const sortedLicenseTypes = Array.from(licenseTypes).sort();
             
-            // License summary rows
+            // Build header: Organization | APs | Switches | Gateways | Total | License1 | License2 | ...
+            header.innerHTML = '<th>Organization</th><th>APs</th><th>Switches</th><th>Gateways</th><th>Total Devices</th>';
             sortedLicenseTypes.forEach(licType => {
-                let tr = `<tr><td>${licType}</td>`;
-                comparisonData.forEach(org => {
-                    let value = '-';
-                    if (org.licenses) {
-                        const entitled = (org.licenses.entitled && org.licenses.entitled[licType]) || 0;
-                        const used = (org.licenses.summary && org.licenses.summary[licType]) || 0;
-                        if (entitled > 0 || used > 0) {
-                            value = `${entitled.toLocaleString()} / ${used.toLocaleString()}`;
-                        }
+                const desc = getLicenseDescription(licType);
+                header.innerHTML += `<th data-bs-toggle="tooltip" data-bs-placement="top" title="${desc}" style="cursor: help;">${licType}</th>`;
+            });
+            
+            // Initialize Bootstrap tooltips
+            const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+            tooltipTriggerList.forEach(el => new bootstrap.Tooltip(el));
+            
+            // Build body - one row per org
+            body.innerHTML = '';
+            
+            // Totals accumulators
+            let totalAPs = 0, totalSwitches = 0, totalGateways = 0, totalDevices = 0;
+            const licenseTotals = {};
+            sortedLicenseTypes.forEach(lt => {
+                licenseTotals[lt] = { entitled: 0, used: 0 };
+            });
+            
+            // Add row for each organization
+            comparisonData.forEach(org => {
+                const aps = org.inventory?.aps || 0;
+                const switches = org.inventory?.switches || 0;
+                const gateways = org.inventory?.gateways || 0;
+                const total = org.inventory?.total || 0;
+                
+                totalAPs += aps;
+                totalSwitches += switches;
+                totalGateways += gateways;
+                totalDevices += total;
+                
+                let tr = `<tr>`;
+                tr += `<td><strong>${org.org_name}</strong></td>`;
+                tr += `<td>${aps.toLocaleString()}</td>`;
+                tr += `<td>${switches.toLocaleString()}</td>`;
+                tr += `<td>${gateways.toLocaleString()}</td>`;
+                tr += `<td>${total.toLocaleString()}</td>`;
+                
+                // License columns
+                sortedLicenseTypes.forEach(licType => {
+                    const entitled = (org.licenses?.entitled && org.licenses.entitled[licType]) || 0;
+                    const used = (org.licenses?.summary && org.licenses.summary[licType]) || 0;
+                    licenseTotals[licType].entitled += entitled;
+                    licenseTotals[licType].used += used;
+                    
+                    if (entitled > 0 || used > 0) {
+                        tr += `<td>${used.toLocaleString()} / ${entitled.toLocaleString()}</td>`;
+                    } else {
+                        tr += `<td>-</td>`;
                     }
-                    tr += `<td>${value}</td>`;
                 });
+                
                 tr += '</tr>';
                 body.innerHTML += tr;
             });
+            
+            // Add totals row
+            let totalsRow = `<tr class="license-type-header">`;
+            totalsRow += `<td><strong>TOTAL</strong></td>`;
+            totalsRow += `<td><strong>${totalAPs.toLocaleString()}</strong></td>`;
+            totalsRow += `<td><strong>${totalSwitches.toLocaleString()}</strong></td>`;
+            totalsRow += `<td><strong>${totalGateways.toLocaleString()}</strong></td>`;
+            totalsRow += `<td><strong>${totalDevices.toLocaleString()}</strong></td>`;
+            
+            sortedLicenseTypes.forEach(licType => {
+                const lt = licenseTotals[licType];
+                if (lt.entitled > 0 || lt.used > 0) {
+                    totalsRow += `<td><strong>${lt.used.toLocaleString()} / ${lt.entitled.toLocaleString()}</strong></td>`;
+                } else {
+                    totalsRow += `<td>-</td>`;
+                }
+            });
+            totalsRow += '</tr>';
+            body.innerHTML += totalsRow;
+            
+            // Save for remaining calculation
+            lastLicenseTotals = licenseTotals;
+            lastSortedLicenseTypes = sortedLicenseTypes;
+            
+            // Show purchased licenses input card and populate inputs
+            renderPurchasedInputs(sortedLicenseTypes);
             
             document.getElementById('comparisonResults').classList.remove('d-none');
             renderSummaryCards();
@@ -505,6 +636,111 @@
             } else {
                 status.className = 'badge bg-danger me-3';
                 status.innerHTML = '<i class="bi bi-circle-fill me-1"></i>Disconnected';
+            }
+        }
+
+        // Render purchased licenses input fields
+        function renderPurchasedInputs(licenseTypes) {
+            const container = document.getElementById('purchasedInputs');
+            container.innerHTML = '';
+            
+            // Add SUB-AI input first (it's a bundle)
+            container.innerHTML += `
+                <div class="col-md-3 col-sm-6">
+                    <label class="form-label small text-magenta"><strong>SUB-AI (Bundle)</strong></label>
+                    <input type="number" class="form-control form-control-sm" id="purchased-SUB-AI" 
+                           placeholder="0" min="0" value="${purchasedLicenses['SUB-AI'] || ''}"
+                           onchange="updatePurchased('SUB-AI', this.value)">
+                    <small class="text-muted">Includes MAN, VNA, AST, ENG, PMA</small>
+                </div>
+            `;
+            
+            // Add inputs for each license type
+            licenseTypes.forEach(licType => {
+                container.innerHTML += `
+                    <div class="col-md-2 col-sm-4">
+                        <label class="form-label small">${licType}</label>
+                        <input type="number" class="form-control form-control-sm" id="purchased-${licType}" 
+                               placeholder="0" min="0" value="${purchasedLicenses[licType] || ''}"
+                               onchange="updatePurchased('${licType}', this.value)">
+                    </div>
+                `;
+            });
+            
+            document.getElementById('purchasedLicensesCard').classList.remove('d-none');
+        }
+
+        // Update purchased value
+        function updatePurchased(licType, value) {
+            const num = parseInt(value) || 0;
+            if (num > 0) {
+                purchasedLicenses[licType] = num;
+            } else {
+                delete purchasedLicenses[licType];
+            }
+        }
+
+        // Clear all purchased licenses
+        function clearPurchasedLicenses() {
+            purchasedLicenses = {};
+            document.querySelectorAll('#purchasedInputs input').forEach(input => {
+                input.value = '';
+            });
+            // Remove remaining row if exists
+            const remainingRow = document.getElementById('remainingRow');
+            if (remainingRow) remainingRow.remove();
+        }
+
+        // Calculate and display remaining licenses
+        function calculateRemaining() {
+            const body = document.getElementById('tableBody');
+            
+            // Remove existing remaining row
+            const existingRow = document.getElementById('remainingRow');
+            if (existingRow) existingRow.remove();
+            
+            // SUB-AI bundle components
+            const subAiComponents = ['SUB-MAN', 'SUB-VNA', 'SUB-AST', 'SUB-ENG', 'SUB-PMA'];
+            const subAiCount = purchasedLicenses['SUB-AI'] || 0;
+            
+            // Build remaining row
+            let remainingRow = `<tr id="remainingRow" style="background-color: #1a3a1a; border-top: 2px solid var(--tmobile-magenta);">`;
+            remainingRow += `<td><strong><i class="bi bi-box-arrow-down me-1"></i>REMAINING (Purchased - Entitled)</strong></td>`;
+            remainingRow += `<td>-</td>`; // APs
+            remainingRow += `<td>-</td>`; // Switches
+            remainingRow += `<td>-</td>`; // Gateways
+            remainingRow += `<td>-</td>`; // Total Devices
+            
+            let hasAnyPurchased = Object.keys(purchasedLicenses).length > 0;
+            
+            lastSortedLicenseTypes.forEach(licType => {
+                const lt = lastLicenseTotals[licType] || { used: 0, entitled: 0 };
+                
+                // Calculate total purchased for this type
+                let purchased = purchasedLicenses[licType] || 0;
+                
+                // Add SUB-AI contribution if this is a component
+                if (subAiComponents.includes(licType)) {
+                    purchased += subAiCount;
+                }
+                
+                if (purchased > 0) {
+                    // Use ENTITLED (not used) - remaining = purchased - total entitled across orgs
+                    const remaining = purchased - lt.entitled;
+                    const colorClass = remaining >= 0 ? 'text-success' : 'text-danger';
+                    const icon = remaining >= 0 ? 'bi-check-circle' : 'bi-exclamation-triangle';
+                    remainingRow += `<td class="${colorClass}"><strong><i class="bi ${icon} me-1"></i>${remaining.toLocaleString()}</strong></td>`;
+                } else {
+                    remainingRow += `<td class="text-muted">-</td>`;
+                }
+            });
+            
+            remainingRow += '</tr>';
+            
+            if (hasAnyPurchased) {
+                body.innerHTML += remainingRow;
+            } else {
+                alert('Please enter at least one purchased license count.');
             }
         }
     </script>

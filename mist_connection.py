@@ -2,22 +2,27 @@
 Mist API Connection Wrapper for MistOrgLicensingComparison
 
 Provides methods for fetching organization licensing data from multiple Mist orgs.
+Supports multiple API tokens, each potentially accessing different organizations.
 """
 
 import os
 import logging
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 import mistapi
 
 logger = logging.getLogger(__name__)
 
 
 class MistConnection:
-    """Handles connections to Mist API for licensing data retrieval"""
+    """Handles connections to Mist API for licensing data retrieval.
+    
+    Supports multiple API tokens where each token may have access to different
+    organizations. Organizations are aggregated from all working tokens.
+    """
     
     def __init__(self, api_token: str, org_id: Optional[str] = None, host: str = 'api.mist.com'):
         """
-        Initialize Mist API connection
+        Initialize Mist API connection with support for multiple tokens.
         
         Args:
             api_token: Mist API token (can be comma-separated for multiple tokens)
@@ -26,20 +31,23 @@ class MistConnection:
         """
         self.host = host
         self.org_id = org_id
-        self.apisession = None
-        self._self_data = None
         
-        # Initialize the API session
-        self._init_session(api_token)
+        # Store all working sessions and their associated orgs
+        self._sessions: List[Tuple[mistapi.APISession, Dict]] = []
+        # Map org_id to session for quick lookup
+        self._org_to_session: Dict[str, mistapi.APISession] = {}
         
-        # Auto-detect org_id if not provided
-        if not self.org_id:
+        # Initialize all API sessions
+        self._init_sessions(api_token)
+        
+        # Auto-detect org_id if not provided (use first available)
+        if not self.org_id and self._sessions:
             self._auto_detect_org()
         
-        logger.info(f"Initialized Mist connection to {self.host} for org {self.org_id}")
+        logger.info(f"Initialized Mist connection to {self.host} with {len(self._sessions)} working token(s)")
     
-    def _init_session(self, api_token: str):
-        """Initialize the mistapi session with token"""
+    def _init_sessions(self, api_token: str):
+        """Initialize mistapi sessions for all provided tokens"""
         # Save and temporarily clear env var to prevent SDK auto-loading
         saved_token = os.environ.get('MIST_APITOKEN')
         if saved_token:
@@ -52,35 +60,42 @@ class MistConnection:
             if not token_list:
                 raise ValueError("No valid API tokens provided")
             
-            # Test first working token
+            # Try each token and keep all working ones
             for idx, token in enumerate(token_list):
                 try:
                     # Create session with token directly (mistapi 0.58+ API)
-                    self.apisession = mistapi.APISession(
+                    session = mistapi.APISession(
                         host=self.host,
                         apitoken=token,
                         console_log_level=30,  # WARNING level
                         show_cli_notif=False
                     )
                     
-                    # Test the token
-                    test_response = mistapi.api.v1.self.self.getSelf(self.apisession)
+                    # Test the token and get user info
+                    test_response = mistapi.api.v1.self.self.getSelf(session)
                     
                     if test_response.status_code == 200:
-                        self._self_data = test_response.data
-                        logger.info(f"Using token {idx + 1}/{len(token_list)}")
-                        break
+                        self_data = test_response.data
+                        self._sessions.append((session, self_data))
+                        
+                        # Map each org to this session
+                        if 'privileges' in self_data:
+                            for priv in self_data['privileges']:
+                                org_id = priv.get('org_id')
+                                if org_id and org_id not in self._org_to_session:
+                                    self._org_to_session[org_id] = session
+                        
+                        logger.info(f"Token {idx + 1}/{len(token_list)} initialized successfully")
                     elif test_response.status_code == 429:
-                        logger.warning(f"Token {idx + 1} rate limited, trying next...")
-                        continue
+                        logger.warning(f"Token {idx + 1} rate limited, skipping...")
                     else:
                         logger.warning(f"Token {idx + 1} returned {test_response.status_code}")
-                        continue
                         
                 except Exception as e:
                     logger.warning(f"Token {idx + 1} failed: {e}")
                     continue
-            else:
+            
+            if not self._sessions:
                 raise Exception("All tokens failed to initialize")
                 
         finally:
@@ -89,57 +104,52 @@ class MistConnection:
                 os.environ['MIST_APITOKEN'] = saved_token
     
     def _auto_detect_org(self):
-        """Auto-detect organization ID from user privileges"""
-        try:
-            if self._self_data:
-                data = self._self_data
-            else:
-                response = mistapi.api.v1.self.self.getSelf(self.apisession)
-                if response.status_code != 200:
-                    raise Exception(f"Failed to get self info: {response.status_code}")
-                data = response.data
-            
-            if 'privileges' in data and len(data['privileges']) > 0:
-                self.org_id = data['privileges'][0].get('org_id')
+        """Auto-detect organization ID from first available session"""
+        if self._sessions:
+            session, self_data = self._sessions[0]
+            if 'privileges' in self_data and len(self_data['privileges']) > 0:
+                self.org_id = self_data['privileges'][0].get('org_id')
                 logger.info(f"Auto-detected org_id: {self.org_id}")
-            else:
-                raise ValueError("No organizations found in user privileges")
-        except Exception as e:
-            logger.error(f"Error auto-detecting org_id: {str(e)}")
-            raise
+    
+    def _get_session_for_org(self, org_id: str) -> mistapi.APISession:
+        """Get the appropriate session for accessing an organization"""
+        if org_id in self._org_to_session:
+            return self._org_to_session[org_id]
+        # Fallback to first session
+        if self._sessions:
+            return self._sessions[0][0]
+        raise Exception("No valid API sessions available")
     
     def get_organizations(self) -> List[Dict]:
-        """Get list of organizations the user has access to"""
-        try:
-            response = mistapi.api.v1.self.self.getSelf(self.apisession)
-            if response.status_code == 200:
-                data = response.data
-                orgs = []
-                if 'privileges' in data:
-                    for priv in data['privileges']:
-                        # Handle different privilege structures
-                        org_id = priv.get('org_id')
-                        # org_name can be in 'org_name' or 'name' field
+        """Get list of all organizations accessible from all tokens (deduplicated)"""
+        orgs_seen = set()
+        orgs = []
+        
+        for session, self_data in self._sessions:
+            if 'privileges' in self_data:
+                for priv in self_data['privileges']:
+                    org_id = priv.get('org_id')
+                    if org_id and org_id not in orgs_seen:
+                        orgs_seen.add(org_id)
                         org_name = priv.get('org_name') or priv.get('name', 'Unknown')
-                        if org_id:
-                            orgs.append({
-                                'id': org_id,
-                                'name': org_name,
-                                'role': priv.get('role', 'unknown'),
-                                'scope': priv.get('scope', 'unknown')
-                            })
-                return orgs
-            else:
-                raise Exception(f"API error: {response.status_code}")
-        except Exception as e:
-            logger.error(f"Error getting organizations: {str(e)}")
-            raise
+                        orgs.append({
+                            'id': org_id,
+                            'name': org_name,
+                            'role': priv.get('role', 'unknown'),
+                            'scope': priv.get('scope', 'unknown')
+                        })
+        
+        # Sort by name
+        orgs.sort(key=lambda x: x['name'].lower())
+        return orgs
     
     def get_organization_info(self, org_id: Optional[str] = None) -> Dict:
         """Get organization information"""
         target_org = org_id or self.org_id
+        session = self._get_session_for_org(target_org)
+        
         try:
-            response = mistapi.api.v1.orgs.orgs.getOrg(self.apisession, target_org)
+            response = mistapi.api.v1.orgs.orgs.getOrg(session, target_org)
             if response.status_code == 200:
                 data = response.data
                 return {
@@ -165,10 +175,11 @@ class MistConnection:
             Dict with license summary and details
         """
         target_org = org_id or self.org_id
+        session = self._get_session_for_org(target_org)
+        
         try:
-            # Get license summary
             response = mistapi.api.v1.orgs.licenses.getOrgLicensesSummary(
-                self.apisession, target_org
+                session, target_org
             )
             
             if response.status_code == 200:
@@ -190,9 +201,11 @@ class MistConnection:
             Dict with license usage by type
         """
         target_org = org_id or self.org_id
+        session = self._get_session_for_org(target_org)
+        
         try:
             response = mistapi.api.v1.orgs.licenses.getOrgLicensesBySite(
-                self.apisession, target_org
+                session, target_org
             )
             
             if response.status_code == 200:
@@ -214,6 +227,8 @@ class MistConnection:
             Dict with device counts by type
         """
         target_org = org_id or self.org_id
+        session = self._get_session_for_org(target_org)
+        
         counts = {
             'aps': 0,
             'switches': 0,
@@ -225,7 +240,7 @@ class MistConnection:
             # Get inventory with type counts
             for device_type in ['ap', 'switch', 'gateway']:
                 response = mistapi.api.v1.orgs.inventory.getOrgInventory(
-                    self.apisession, target_org,
+                    session, target_org,
                     type=device_type,
                     limit=1
                 )
@@ -240,7 +255,7 @@ class MistConnection:
                         else:
                             # Make a count-only request
                             count_response = mistapi.api.v1.orgs.inventory.countOrgInventory(
-                                self.apisession, target_org,
+                                session, target_org,
                                 type=device_type
                             )
                             if count_response.status_code == 200:
