@@ -77,3 +77,4 @@ Helps administrators visualize and compare license allocations, device counts, a
 - Repository: https://github.com/jmorrison-juniper/MistOrgLicensingComparison
 - Use `gh` CLI for GitHub operations (authenticated via keyring)
 - Git protocol: HTTPS
+- License: Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0)
