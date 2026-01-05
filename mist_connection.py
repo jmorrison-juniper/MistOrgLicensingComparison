@@ -218,13 +218,13 @@ class MistConnection:
     
     def get_org_inventory_counts(self, org_id: Optional[str] = None) -> Dict:
         """
-        Get inventory counts by device type
+        Get inventory counts by device type (physical device counts for licensing)
         
         Args:
             org_id: Organization ID (uses default if not provided)
             
         Returns:
-            Dict with device counts by type
+            Dict with physical device counts by type
         """
         target_org = org_id or self.org_id
         session = self._get_session_for_org(target_org)
@@ -237,29 +237,21 @@ class MistConnection:
         }
         
         try:
-            # Get inventory with type counts
+            # Use countOrgInventory to get physical device counts
+            # This returns the actual physical count (e.g., all members in a VC stack)
+            # which aligns with licensing requirements
             for device_type in ['ap', 'switch', 'gateway']:
-                response = mistapi.api.v1.orgs.inventory.getOrgInventory(
+                count_response = mistapi.api.v1.orgs.inventory.countOrgInventory(
                     session, target_org,
-                    type=device_type,
-                    limit=1
+                    type=device_type
                 )
                 
-                if response.status_code == 200:
-                    # Get total from response headers or count
-                    total = getattr(response, 'total', 0)
-                    if hasattr(response, 'data') and isinstance(response.data, list):
-                        # If we got paginated response, check for total in headers
-                        if hasattr(response, 'headers'):
-                            total = int(response.headers.get('X-Page-Total', len(response.data)))
-                        else:
-                            # Make a count-only request
-                            count_response = mistapi.api.v1.orgs.inventory.countOrgInventory(
-                                session, target_org,
-                                type=device_type
-                            )
-                            if count_response.status_code == 200:
-                                total = count_response.data.get('count', 0)
+                if count_response.status_code == 200:
+                    # Sum up counts from all models in the results
+                    total = 0
+                    results = count_response.data.get('results', [])
+                    for result in results:
+                        total += result.get('count', 0)
                     
                     if device_type == 'ap':
                         counts['aps'] = total
@@ -274,3 +266,4 @@ class MistConnection:
         except Exception as e:
             logger.error(f"Error getting inventory counts for org {target_org}: {str(e)}")
             raise
+
