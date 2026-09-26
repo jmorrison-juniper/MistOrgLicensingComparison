@@ -134,6 +134,8 @@ The Docker image is built for both `linux/amd64` and `linux/arm64` platforms, su
 - Apple Silicon Macs (M1/M2/M3)
 - ARM-based cloud instances
 
+The `build.yml` workflow calls the shared `reusable-container-image.yml` workflow in [misthelper-devtools](https://github.com/jmorrison-juniper/misthelper-devtools). The caller pins a devtools release commit, and a comment names the release tag.
+
 ## Development
 
 ### Project Structure
