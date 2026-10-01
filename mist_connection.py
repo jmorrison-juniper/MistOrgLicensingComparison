@@ -7,10 +7,19 @@ Supports multiple API tokens, each potentially accessing different organizations
 
 import logging
 import os
+from typing import Any
 
-import mistapi
+# mistapi does not publish type hints, so mypy cannot inspect the SDK.
+import mistapi  # type: ignore[import-untyped]
 
 logger = logging.getLogger(__name__)
+
+
+class MistConnectionError(RuntimeError):
+    """Raised when Mist API communication cannot complete."""
+
+
+type MistResponseData = dict[str, Any]
 
 
 class MistConnection:
@@ -35,7 +44,7 @@ class MistConnection:
         self.org_id = org_id
 
         # Store all working sessions and their associated orgs
-        self._sessions: list[tuple[mistapi.APISession, dict]] = []
+        self._sessions: list[tuple[mistapi.APISession, MistResponseData]] = []
         # Map org_id to session for quick lookup
         self._org_to_session: dict[str, mistapi.APISession] = {}
 
@@ -50,7 +59,7 @@ class MistConnection:
             f"Initialized Mist connection to {self.host} with {len(self._sessions)} working token(s)"
         )
 
-    def _init_sessions(self, api_token: str):
+    def _init_sessions(self, api_token: str) -> None:
         """Initialize mistapi sessions for all provided tokens"""
         # Save and temporarily clear env var to prevent SDK auto-loading
         saved_token = os.environ.get("MIST_APITOKEN")
@@ -99,25 +108,39 @@ class MistConnection:
                             f"Token {idx + 1} returned {test_response.status_code}"
                         )
 
-                except Exception as e:
+                except (
+                    AttributeError,
+                    KeyError,
+                    OSError,
+                    RuntimeError,
+                    TypeError,
+                    ValueError,
+                ) as e:
                     logger.warning(f"Token {idx + 1} failed: {e}")
                     continue
 
             if not self._sessions:
-                raise Exception("All tokens failed to initialize")
+                raise MistConnectionError("All tokens failed to initialize")
 
         finally:
             # Restore the environment variable
             if saved_token is not None:
                 os.environ["MIST_APITOKEN"] = saved_token
 
-    def _auto_detect_org(self):
+    def _auto_detect_org(self) -> None:
         """Auto-detect organization ID from first available session"""
         if self._sessions:
-            session, self_data = self._sessions[0]
+            _session, self_data = self._sessions[0]
             if "privileges" in self_data and len(self_data["privileges"]) > 0:
                 self.org_id = self_data["privileges"][0].get("org_id")
                 logger.info(f"Auto-detected org_id: {self.org_id}")
+
+    def _resolve_org_id(self, org_id: str | None) -> str:
+        """Resolve an explicit or default organization ID."""
+        target_org = org_id or self.org_id
+        if not target_org:
+            raise MistConnectionError("Organization ID is required")
+        return target_org
 
     def _get_session_for_org(self, org_id: str) -> mistapi.APISession:
         """Get the appropriate session for accessing an organization"""
@@ -126,14 +149,24 @@ class MistConnection:
         # Fallback to first session
         if self._sessions:
             return self._sessions[0][0]
-        raise Exception("No valid API sessions available")
+        raise MistConnectionError("No valid API sessions available")
 
-    def get_organizations(self) -> list[dict]:
+    def _get_response_data(self, response: Any, context: str) -> MistResponseData:
+        """Return response data or raise a typed connection error."""
+        status_code = getattr(response, "status_code", None)
+        if status_code == 200:
+            data = getattr(response, "data", None)
+            if isinstance(data, dict):
+                return data
+            raise MistConnectionError(f"{context} returned invalid response data")
+        raise MistConnectionError(f"{context} failed with status {status_code}")
+
+    def get_organizations(self) -> list[MistResponseData]:
         """Get list of all organizations accessible from all tokens (deduplicated)"""
         orgs_seen = set()
-        orgs = []
+        orgs: list[MistResponseData] = []
 
-        for session, self_data in self._sessions:
+        for _session, self_data in self._sessions:
             if "privileges" in self_data:
                 for priv in self_data["privileges"]:
                     org_id = priv.get("org_id")
@@ -153,28 +186,21 @@ class MistConnection:
         orgs.sort(key=lambda x: x["name"].lower())
         return orgs
 
-    def get_organization_info(self, org_id: str | None = None) -> dict:
+    def get_organization_info(self, org_id: str | None = None) -> MistResponseData:
         """Get organization information"""
-        target_org = org_id or self.org_id
+        target_org = self._resolve_org_id(org_id)
         session = self._get_session_for_org(target_org)
 
-        try:
-            response = mistapi.api.v1.orgs.orgs.getOrg(session, target_org)
-            if response.status_code == 200:
-                data = response.data
-                return {
-                    "org_id": data.get("id"),
-                    "org_name": data.get("name", "Unknown Organization"),
-                    "created_time": data.get("created_time", 0),
-                    "updated_time": data.get("updated_time", 0),
-                }
-            else:
-                raise Exception(f"API error: {response.status_code}")
-        except Exception as e:
-            logger.error(f"Error getting organization info: {e!s}")
-            raise
+        response = mistapi.api.v1.orgs.orgs.getOrg(session, target_org)
+        data = self._get_response_data(response, "Organization info request")
+        return {
+            "org_id": data.get("id"),
+            "org_name": data.get("name", "Unknown Organization"),
+            "created_time": data.get("created_time", 0),
+            "updated_time": data.get("updated_time", 0),
+        }
 
-    def get_org_licenses(self, org_id: str | None = None) -> dict:
+    def get_org_licenses(self, org_id: str | None = None) -> MistResponseData:
         """
         Get organization license information
 
@@ -184,23 +210,15 @@ class MistConnection:
         Returns:
             Dict with license summary and details
         """
-        target_org = org_id or self.org_id
+        target_org = self._resolve_org_id(org_id)
         session = self._get_session_for_org(target_org)
 
-        try:
-            response = mistapi.api.v1.orgs.licenses.getOrgLicensesSummary(
-                session, target_org
-            )
+        response = mistapi.api.v1.orgs.licenses.getOrgLicensesSummary(
+            session, target_org
+        )
+        return self._get_response_data(response, "License summary request")
 
-            if response.status_code == 200:
-                return response.data
-            else:
-                raise Exception(f"API error: {response.status_code}")
-        except Exception as e:
-            logger.error(f"Error getting licenses for org {target_org}: {e!s}")
-            raise
-
-    def get_org_license_usage(self, org_id: str | None = None) -> dict:
+    def get_org_license_usage(self, org_id: str | None = None) -> MistResponseData:
         """
         Get organization license usage details
 
@@ -210,23 +228,15 @@ class MistConnection:
         Returns:
             Dict with license usage by type
         """
-        target_org = org_id or self.org_id
+        target_org = self._resolve_org_id(org_id)
         session = self._get_session_for_org(target_org)
 
-        try:
-            response = mistapi.api.v1.orgs.licenses.getOrgLicensesBySite(
-                session, target_org
-            )
+        response = mistapi.api.v1.orgs.licenses.getOrgLicensesBySite(
+            session, target_org
+        )
+        return self._get_response_data(response, "License usage request")
 
-            if response.status_code == 200:
-                return response.data
-            else:
-                raise Exception(f"API error: {response.status_code}")
-        except Exception as e:
-            logger.error(f"Error getting license usage for org {target_org}: {e!s}")
-            raise
-
-    def get_org_inventory_counts(self, org_id: str | None = None) -> dict:
+    def get_org_inventory_counts(self, org_id: str | None = None) -> MistResponseData:
         """
         Get inventory counts by device type (physical device counts for licensing)
 
@@ -236,37 +246,31 @@ class MistConnection:
         Returns:
             Dict with physical device counts by type
         """
-        target_org = org_id or self.org_id
+        target_org = self._resolve_org_id(org_id)
         session = self._get_session_for_org(target_org)
 
-        counts = {"aps": 0, "switches": 0, "gateways": 0, "total": 0}
+        counts: MistResponseData = {"aps": 0, "switches": 0, "gateways": 0, "total": 0}
 
-        try:
-            # Use countOrgInventory to get physical device counts
-            # This returns the actual physical count (e.g., all members in a VC stack)
-            # which aligns with licensing requirements
-            for device_type in ["ap", "switch", "gateway"]:
-                count_response = mistapi.api.v1.orgs.inventory.countOrgInventory(
-                    session, target_org, type=device_type
-                )
+        # Use countOrgInventory to get physical device counts
+        # This returns the actual physical count (e.g., all members in a VC stack)
+        # which aligns with licensing requirements
+        for device_type in ["ap", "switch", "gateway"]:
+            count_response = mistapi.api.v1.orgs.inventory.countOrgInventory(
+                session, target_org, type=device_type
+            )
 
-                if count_response.status_code == 200:
-                    # Sum up counts from all models in the results
-                    total = 0
-                    results = count_response.data.get("results", [])
-                    for result in results:
-                        total += result.get("count", 0)
+            if count_response.status_code == 200:
+                total = 0
+                results = count_response.data.get("results", [])
+                for result in results:
+                    total += result.get("count", 0)
 
-                    if device_type == "ap":
-                        counts["aps"] = total
-                    elif device_type == "switch":
-                        counts["switches"] = total
-                    elif device_type == "gateway":
-                        counts["gateways"] = total
+                if device_type == "ap":
+                    counts["aps"] = total
+                elif device_type == "switch":
+                    counts["switches"] = total
+                elif device_type == "gateway":
+                    counts["gateways"] = total
 
-            counts["total"] = counts["aps"] + counts["switches"] + counts["gateways"]
-            return counts
-
-        except Exception as e:
-            logger.error(f"Error getting inventory counts for org {target_org}: {e!s}")
-            raise
+        counts["total"] = counts["aps"] + counts["switches"] + counts["gateways"]
+        return counts

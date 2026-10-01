@@ -10,6 +10,8 @@ import os
 from dotenv import load_dotenv
 from flask import Flask, jsonify, render_template, request
 
+from mist_connection import MistConnection, MistConnectionError
+
 # Load environment variables
 load_dotenv()
 
@@ -24,16 +26,14 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 
 # Global Mist connection (lazy initialization)
-_mist_connection = None
+_mist_connection: MistConnection | None = None
 
 
-def get_mist_connection():
+def get_mist_connection() -> MistConnection:
     """Get or create Mist API connection"""
     global _mist_connection
 
     if _mist_connection is None:
-        from mist_connection import MistConnection
-
         api_token = os.environ.get("MIST_API_TOKEN") or os.environ.get("MIST_APITOKEN")
         if not api_token:
             raise ValueError("MIST_API_TOKEN environment variable is required")
@@ -69,7 +69,7 @@ def get_organizations():
         mist = get_mist_connection()
         orgs = mist.get_organizations()
         return jsonify({"success": True, "data": orgs})
-    except Exception as e:
+    except (MistConnectionError, ValueError) as e:
         logger.error(f"Error getting organizations: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
 
@@ -81,7 +81,7 @@ def get_organization(org_id: str):
         mist = get_mist_connection()
         org_info = mist.get_organization_info(org_id)
         return jsonify({"success": True, "data": org_info})
-    except Exception as e:
+    except (MistConnectionError, ValueError) as e:
         logger.error(f"Error getting organization {org_id}: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
 
@@ -93,7 +93,7 @@ def get_licenses(org_id: str):
         mist = get_mist_connection()
         licenses = mist.get_org_licenses(org_id)
         return jsonify({"success": True, "data": licenses})
-    except Exception as e:
+    except (MistConnectionError, ValueError) as e:
         logger.error(f"Error getting licenses for org {org_id}: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
 
@@ -105,7 +105,7 @@ def get_license_usage(org_id: str):
         mist = get_mist_connection()
         usage = mist.get_org_license_usage(org_id)
         return jsonify({"success": True, "data": usage})
-    except Exception as e:
+    except (MistConnectionError, ValueError) as e:
         logger.error(f"Error getting license usage for org {org_id}: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
 
@@ -117,7 +117,7 @@ def get_inventory(org_id: str):
         mist = get_mist_connection()
         counts = mist.get_org_inventory_counts(org_id)
         return jsonify({"success": True, "data": counts})
-    except Exception as e:
+    except (MistConnectionError, ValueError) as e:
         logger.error(f"Error getting inventory for org {org_id}: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
 
@@ -129,56 +129,58 @@ def compare_organizations():
 
     Request body: {"org_ids": ["org1", "org2", ...]}
     """
+    data = request.get_json(silent=True) or {}
+    org_ids = data.get("org_ids", [])
+
+    if not isinstance(org_ids, list) or not all(
+        isinstance(item, str) for item in org_ids
+    ):
+        return (
+            jsonify({"success": False, "error": "No organization IDs provided"}),
+            400,
+        )
+
     try:
-        data = request.get_json()
-        org_ids = data.get("org_ids", [])
-
-        if not org_ids:
-            return (
-                jsonify({"success": False, "error": "No organization IDs provided"}),
-                400,
-            )
-
         mist = get_mist_connection()
-        results = []
-
-        for org_id in org_ids:
-            try:
-                org_info = mist.get_organization_info(org_id)
-                licenses = mist.get_org_licenses(org_id)
-                inventory = mist.get_org_inventory_counts(org_id)
-
-                results.append(
-                    {
-                        "org_id": org_id,
-                        "org_name": org_info.get("org_name", "Unknown"),
-                        "licenses": licenses,
-                        "inventory": inventory,
-                        "error": None,
-                    }
-                )
-            except Exception as e:
-                logger.warning(f"Error fetching data for org {org_id}: {e}")
-                results.append(
-                    {
-                        "org_id": org_id,
-                        "org_name": "Error",
-                        "licenses": None,
-                        "inventory": None,
-                        "error": str(e),
-                    }
-                )
-
-        return jsonify({"success": True, "data": results})
-
-    except Exception as e:
+    except (MistConnectionError, ValueError) as e:
         logger.error(f"Error comparing organizations: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
 
+    results = []
+    for org_id in org_ids:
+        try:
+            org_info = mist.get_organization_info(org_id)
+            licenses = mist.get_org_licenses(org_id)
+            inventory = mist.get_org_inventory_counts(org_id)
+
+            results.append(
+                {
+                    "org_id": org_id,
+                    "org_name": org_info.get("org_name", "Unknown"),
+                    "licenses": licenses,
+                    "inventory": inventory,
+                    "error": None,
+                }
+            )
+        except (MistConnectionError, ValueError) as e:
+            logger.warning(f"Error fetching data for org {org_id}: {e}")
+            results.append(
+                {
+                    "org_id": org_id,
+                    "org_name": "Error",
+                    "licenses": None,
+                    "inventory": None,
+                    "error": str(e),
+                }
+            )
+
+    return jsonify({"success": True, "data": results})
+
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
+    port = int(os.environ.get("PORT", "5000"))
     debug = os.environ.get("FLASK_DEBUG", "false").lower() == "true"
+    host = os.environ.get("FLASK_RUN_HOST", "127.0.0.1")
 
     logger.info(f"Starting MistOrgLicensingComparison on port {port}")
-    app.run(host="0.0.0.0", port=port, debug=debug)
+    app.run(host=host, port=port, debug=debug)
