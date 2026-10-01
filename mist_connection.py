@@ -109,7 +109,7 @@ class MistConnection:
                             f"Token {idx + 1} returned {test_response.status_code}"
                         )
 
-                except Exception as e:  # noqa: BLE001 - SDK token failover.
+                except Exception as e:
                     logger.warning(f"Token {idx + 1} failed: {e}")
                     continue
 
