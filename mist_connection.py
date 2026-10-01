@@ -20,6 +20,7 @@ class MistConnectionError(RuntimeError):
 
 
 type MistResponseData = dict[str, Any]
+type MistJsonData = Any
 
 
 class MistConnection:
@@ -108,14 +109,7 @@ class MistConnection:
                             f"Token {idx + 1} returned {test_response.status_code}"
                         )
 
-                except (
-                    AttributeError,
-                    KeyError,
-                    OSError,
-                    RuntimeError,
-                    TypeError,
-                    ValueError,
-                ) as e:
+                except Exception as e:  # noqa: BLE001 - SDK token failover.
                     logger.warning(f"Token {idx + 1} failed: {e}")
                     continue
 
@@ -151,14 +145,11 @@ class MistConnection:
             return self._sessions[0][0]
         raise MistConnectionError("No valid API sessions available")
 
-    def _get_response_data(self, response: Any, context: str) -> MistResponseData:
+    def _get_response_data(self, response: Any, context: str) -> MistJsonData:
         """Return response data or raise a typed connection error."""
         status_code = getattr(response, "status_code", None)
         if status_code == 200:
-            data = getattr(response, "data", None)
-            if isinstance(data, dict):
-                return data
-            raise MistConnectionError(f"{context} returned invalid response data")
+            return getattr(response, "data", None)
         raise MistConnectionError(f"{context} failed with status {status_code}")
 
     def get_organizations(self) -> list[MistResponseData]:
@@ -218,7 +209,7 @@ class MistConnection:
         )
         return self._get_response_data(response, "License summary request")
 
-    def get_org_license_usage(self, org_id: str | None = None) -> MistResponseData:
+    def get_org_license_usage(self, org_id: str | None = None) -> MistJsonData:
         """
         Get organization license usage details
 

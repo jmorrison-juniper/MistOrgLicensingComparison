@@ -10,7 +10,7 @@ import os
 from dotenv import load_dotenv
 from flask import Flask, jsonify, render_template, request
 
-from mist_connection import MistConnection, MistConnectionError
+from mist_connection import MistConnection
 
 # Load environment variables
 load_dotenv()
@@ -69,7 +69,7 @@ def get_organizations():
         mist = get_mist_connection()
         orgs = mist.get_organizations()
         return jsonify({"success": True, "data": orgs})
-    except (MistConnectionError, ValueError) as e:
+    except Exception as e:  # noqa: BLE001 - Keep JSON 500 responses for SDK failures.
         logger.error(f"Error getting organizations: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
 
@@ -81,7 +81,7 @@ def get_organization(org_id: str):
         mist = get_mist_connection()
         org_info = mist.get_organization_info(org_id)
         return jsonify({"success": True, "data": org_info})
-    except (MistConnectionError, ValueError) as e:
+    except Exception as e:  # noqa: BLE001 - Keep JSON 500 responses for SDK failures.
         logger.error(f"Error getting organization {org_id}: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
 
@@ -93,7 +93,7 @@ def get_licenses(org_id: str):
         mist = get_mist_connection()
         licenses = mist.get_org_licenses(org_id)
         return jsonify({"success": True, "data": licenses})
-    except (MistConnectionError, ValueError) as e:
+    except Exception as e:  # noqa: BLE001 - Keep JSON 500 responses for SDK failures.
         logger.error(f"Error getting licenses for org {org_id}: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
 
@@ -105,7 +105,7 @@ def get_license_usage(org_id: str):
         mist = get_mist_connection()
         usage = mist.get_org_license_usage(org_id)
         return jsonify({"success": True, "data": usage})
-    except (MistConnectionError, ValueError) as e:
+    except Exception as e:  # noqa: BLE001 - Keep JSON 500 responses for SDK failures.
         logger.error(f"Error getting license usage for org {org_id}: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
 
@@ -117,7 +117,7 @@ def get_inventory(org_id: str):
         mist = get_mist_connection()
         counts = mist.get_org_inventory_counts(org_id)
         return jsonify({"success": True, "data": counts})
-    except (MistConnectionError, ValueError) as e:
+    except Exception as e:  # noqa: BLE001 - Keep JSON 500 responses for SDK failures.
         logger.error(f"Error getting inventory for org {org_id}: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
 
@@ -132,8 +132,10 @@ def compare_organizations():
     data = request.get_json(silent=True) or {}
     org_ids = data.get("org_ids", [])
 
-    if not isinstance(org_ids, list) or not all(
-        isinstance(item, str) for item in org_ids
+    if (
+        not org_ids
+        or not isinstance(org_ids, list)
+        or not all(isinstance(item, str) for item in org_ids)
     ):
         return (
             jsonify({"success": False, "error": "No organization IDs provided"}),
@@ -142,7 +144,7 @@ def compare_organizations():
 
     try:
         mist = get_mist_connection()
-    except (MistConnectionError, ValueError) as e:
+    except Exception as e:  # noqa: BLE001 - Keep JSON 500 responses for SDK failures.
         logger.error(f"Error comparing organizations: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
 
@@ -162,7 +164,7 @@ def compare_organizations():
                     "error": None,
                 }
             )
-        except (MistConnectionError, ValueError) as e:
+        except Exception as e:  # noqa: BLE001 - Keep one org failure in its result row.
             logger.warning(f"Error fetching data for org {org_id}: {e}")
             results.append(
                 {
