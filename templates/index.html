@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mist Organization Licensing Comparison</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.css" rel="stylesheet">
     <style>
         :root {
             --tmobile-magenta: #E20074;
@@ -277,7 +277,7 @@
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         // State
         let organizations = [];
@@ -828,7 +828,8 @@
                 headers.push(th.textContent.trim().replace(/\n/g, ' '));
             });
             
-            let csv = headers.map(h => `"${h}"`).join(',') + '\n';
+            const quoteCSV = text => `"${text.replace(/"/g, '""')}"`;
+            let csv = headers.map(quoteCSV).join(',') + '\n';
             
             // Get all rows from tbody
             const rows = body.querySelectorAll('tr');
@@ -851,7 +852,7 @@
                     if (idx > 0 && text.includes('/')) {
                         text = ' ' + text;
                     }
-                    rowData.push(`"${text}"`);
+                    rowData.push(quoteCSV(text));
                 });
                 
                 if (rowData.length > 0) {

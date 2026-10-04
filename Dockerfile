@@ -22,8 +22,8 @@ RUN groupadd -r appgroup && useradd -r -g appgroup appuser
 WORKDIR /app
 
 # Install dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY requirements.txt requirements.lock.txt ./
+RUN pip install --no-cache-dir -r requirements.lock.txt
 
 # Copy application code
 COPY app.py mist_connection.py ./
@@ -43,4 +43,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')" || exit 1
 
 # Run the application
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "2", "--threads", "4", "app:app"]
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "2", "--threads", "4", "--no-control-socket", "app:app"]
