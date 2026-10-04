@@ -250,18 +250,13 @@ class MistConnection:
                 session, target_org, type=device_type
             )
 
-            if count_response.status_code == 200:
-                total = 0
-                results = count_response.data.get("results", [])
-                for result in results:
-                    total += result.get("count", 0)
-
-                if device_type == "ap":
-                    counts["aps"] = total
-                elif device_type == "switch":
-                    counts["switches"] = total
-                elif device_type == "gateway":
-                    counts["gateways"] = total
+            data = self._get_response_data(
+                count_response, f"{device_type} inventory count request"
+            )
+            total = sum(result.get("count", 0) for result in data.get("results", []))
+            counts[
+                {"ap": "aps", "switch": "switches", "gateway": "gateways"}[device_type]
+            ] = total
 
         counts["total"] = counts["aps"] + counts["switches"] + counts["gateways"]
         return counts

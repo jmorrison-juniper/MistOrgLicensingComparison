@@ -130,12 +130,14 @@ def compare_organizations():
     Request body: {"org_ids": ["org1", "org2", ...]}
     """
     data = request.get_json(silent=True) or {}
+    if not isinstance(data, dict):
+        return jsonify({"success": False, "error": "Expected a JSON object"}), 400
     org_ids = data.get("org_ids", [])
 
     if (
         not org_ids
         or not isinstance(org_ids, list)
-        or not all(isinstance(item, str) for item in org_ids)
+        or not all(isinstance(item, str) and item.strip() for item in org_ids)
     ):
         return (
             jsonify({"success": False, "error": "No organization IDs provided"}),

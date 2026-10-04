@@ -8,7 +8,7 @@ Helps administrators visualize and compare license allocations, device counts, a
 - Python 3.13 in Docker containers
 - Flask with application factory pattern
 - mistapi SDK for Mist API integration
-- Bootstrap 5.3.2 dark theme with T-Mobile magenta accent (#E20074)
+- Bootstrap 5.3.8 dark theme with T-Mobile magenta accent (#E20074)
 - Single-page application with vanilla JavaScript
 - Multi-architecture Docker containers (amd64/arm64)
 
@@ -46,8 +46,8 @@ Helps administrators visualize and compare license allocations, device counts, a
 - Check status_code == 200 for successful responses
 - Key endpoints:
   - `mistapi.api.v1.self.self.getSelf()` - Get user info
-  - `mistapi.api.v1.orgs.licenses.getOrgLicencesSummary()` - License summary
-  - `mistapi.api.v1.orgs.licenses.getOrgLicencesBySite()` - License usage
+  - `mistapi.api.v1.orgs.licenses.getOrgLicensesSummary()` - License summary
+  - `mistapi.api.v1.orgs.licenses.getOrgLicensesBySite()` - License usage
   - `mistapi.api.v1.orgs.inventory.getOrgInventory()` - Device inventory
 
 ## Dependency Management

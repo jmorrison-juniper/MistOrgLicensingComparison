@@ -12,7 +12,7 @@ A Flask web application for comparing Juniper Mist organization licensing inform
 - **Device Inventory**: View AP, Switch, and Gateway counts per organization
 - **License Tooltips**: Hover over license types to see descriptions (documented vs undocumented)
 - **Export to CSV**: Download comparison data for reporting
-- **Dark Theme**: Bootstrap 5.3.2 dark theme with T-Mobile magenta accent
+- **Dark Theme**: Bootstrap 5.3.8 dark theme with T-Mobile magenta accent
 
 ## Supported License Types
 
@@ -34,7 +34,7 @@ A Flask web application for comparing Juniper Mist organization licensing inform
 
 ### Prerequisites
 
-- Python 3.13+ (or 3.11+)
+- Python 3.13 (the supported container and CI runtime)
 - Mist API Token with access to target organizations
 
 ### Local Development
@@ -53,7 +53,7 @@ A Flask web application for comparing Juniper Mist organization licensing inform
 
 3. Install dependencies:
    ```bash
-   pip install -r requirements.txt
+   pip install -r requirements.lock.txt
    ```
 
 4. Create `.env` file:
@@ -159,12 +159,52 @@ MistOrgLicensingComparison/
 ### Running Tests
 
 ```bash
-# Install test dependencies
-pip install pytest pytest-cov
+# Install the runtime and quality tools
+python -m pip install -r requirements-dev.lock.txt
 
-# Run tests
-pytest
+# Run offline Python tests and frontend tests (Node.js 24)
+python -m unittest discover -s tests -v
+node --test tests/frontend.test.cjs
+
+# Run the quality checks
+ruff check app.py mist_connection.py tests
+black --check app.py mist_connection.py tests
+mypy app.py mist_connection.py
+bandit -r app.py mist_connection.py -ll
+pip-audit --disable-pip --no-deps -r requirements.lock.txt
 ```
+
+The tests mock the Mist SDK, HTTP transport, and browser DOM. They use no API
+credentials or live Mist calls. They cover HTTP errors, malformed comparison
+requests, partial results, multi-token organization selection, physical device
+counts, SDK compatibility, SUB-AI bundles, manual counts, and CSV export.
+Failed inventory requests produce an error, not a false zero-device count.
+
+### Dependency refresh
+
+The runtime and development manifests pin direct dependencies. The lock files
+also pin their resolved dependencies. The container and offline test workflow
+install the runtime lock. The shared quality gates install the development
+manifest. In a clean Python 3.13 environment, update the manifests, then run:
+
+```bash
+python -m pip install -r requirements.txt
+python -m pip freeze > requirements.lock.txt
+python -m pip install -r requirements-dev.txt
+python -m pip freeze > requirements-dev.lock.txt
+```
+
+Compare the resolved dependencies on Linux and macOS. Keep Linux-only keyring
+dependencies in both locks with `sys_platform == "linux"` markers.
+
+Run the offline tests and quality checks before merging a refresh. The browser
+uses Bootstrap 5.3.8 and Bootstrap Icons 1.13.1 from jsDelivr. The Python 3.13
+container tag tracks current patch releases. Shared workflows remain at
+misthelper-devtools v0.6.0, the current stable release.
+
+Gunicorn 26 adds a control socket in the user's home directory. The container
+disables this unused management socket because its non-root user has no writable
+home. HTTP service still uses two workers and four threads per worker.
 
 ## License
 
