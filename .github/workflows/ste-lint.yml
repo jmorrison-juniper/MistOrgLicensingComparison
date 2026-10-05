@@ -8,7 +8,7 @@
 # rules only. Grade the same files with a dictionary on your own machine too.
 #
 # The `uses:` line pins a full commit SHA of misthelper-devtools, and the
-# comment after it names the release. This template pins the v0.6.1 commit.
+# comment after it names the release.
 # Re-pin the SHA and the comment together when you adopt a later release, and
 # let Dependabot move the pin with a `github-actions` entry in
 # `.github/dependabot.yml`.
@@ -38,7 +38,7 @@ jobs:
   ste-lint:
     permissions:
       contents: read
-    uses: jmorrison-juniper/misthelper-devtools/.github/workflows/reusable-ste-lint.yml@d00c9af1fccafe5858b76ad088a22ed8b046f8ae # v0.6.1
+    uses: jmorrison-juniper/misthelper-devtools/.github/workflows/reusable-ste-lint.yml@da02d4c6a2163d1882f2ad25fce80b8ba38304d1 # v0.6.2
     with:
       files: README.md AGENTS.md .github/copilot-instructions.md
       config: .ste-linter.toml
