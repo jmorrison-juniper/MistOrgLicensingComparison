@@ -1,12 +1,24 @@
+import hashlib
 import re
 import unittest
 from pathlib import Path
-
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
 class DocumentationTests(unittest.TestCase):
+    def test_agent_instruction_files_use_the_canonical_generic_file(self):
+        generic = ROOT / "AGENTS.md"
+        specific = ROOT / ".github" / "copilot-instructions.md"
+        digest = hashlib.sha256(generic.read_bytes()).hexdigest()
+
+        self.assertEqual(
+            digest,
+            "bf6d2bff3074941ecf2132acdfaa01edacdb1e7ef199961a910ebd9937021886",
+        )
+        self.assertIn("MistOrgLicensingComparison", specific.read_text())
+        self.assertNotIn("<repository name>", specific.read_text())
+
     def test_readme_uses_only_the_six_requested_sections(self):
         readme = (ROOT / "README.md").read_text()
         headings = re.findall(r"^## (.+)$", readme, re.MULTILINE)
@@ -24,7 +36,9 @@ class DocumentationTests(unittest.TestCase):
                     if link.startswith(("http://", "https://", "#")):
                         continue
                     target = (document.parent / link.split("#", 1)[0]).resolve()
-                    self.assertTrue(target.exists(), f"Broken link in {document}: {link}")
+                    self.assertTrue(
+                        target.exists(), f"Broken link in {document}: {link}"
+                    )
 
     def test_readme_embeds_nonempty_png_screenshots(self):
         readme = (ROOT / "README.md").read_text()
@@ -42,7 +56,9 @@ class DocumentationTests(unittest.TestCase):
         )
         for screenshot in screenshots:
             image = ROOT / screenshot
-            self.assertGreater(image.stat().st_size, 0, f"Empty screenshot: {screenshot}")
+            self.assertGreater(
+                image.stat().st_size, 0, f"Empty screenshot: {screenshot}"
+            )
             self.assertEqual(image.read_bytes()[:8], b"\x89PNG\r\n\x1a\n")
 
 
