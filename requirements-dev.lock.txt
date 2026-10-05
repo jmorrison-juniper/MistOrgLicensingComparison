@@ -33,7 +33,7 @@ markdown-it-py==4.2.0
 MarkupSafe==3.0.4
 mdurl==0.1.2
 mistapi==0.64.0
-misthelper-devtools @ git+https://github.com/jmorrison-juniper/misthelper-devtools@b140350ebc40e61b57a3a65731c0df520f143661
+misthelper-devtools @ git+https://github.com/jmorrison-juniper/misthelper-devtools@da02d4c6a2163d1882f2ad25fce80b8ba38304d1
 more-itertools==11.1.0
 msgpack==1.2.3
 mypy==2.4.0
