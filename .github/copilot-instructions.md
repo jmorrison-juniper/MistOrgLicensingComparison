@@ -113,11 +113,29 @@ Push the tag with `git push origin <tag>` to start a release build.
 The build workflow publishes images to
 `ghcr.io/jmorrison-juniper/mistorglicensingcomparison`. It builds images for pushes to `main` and
 version tags. A pull request build does not publish an image.
-The repository has offline test, Python quality gate, container build, and stranded branch report
-workflows. The stranded branch report runs each Monday at 07:00 UTC.
+The offline test workflow runs its own steps. Each other workflow calls a shared workflow of
+`misthelper-devtools` at release v0.6.2.
+
+| Workflow file | Purpose |
+| - | - |
+| `tests.yml` | Run the offline Python and frontend tests. |
+| `quality-gates.yml` | Run the Python quality gates. |
+| `build.yml` | Build the container image. Publish it for `main` and version tags. |
+| `codeql.yml` | Run the CodeQL analysis for Python. |
+| `ste-lint.yml` | Grade the Markdown files with the STE linter. |
+| `stranded-branch-report.yml` | Report each branch that has no pull request. |
+
+The CodeQL workflow runs for each pull request, for each push to `main`, and each Monday at 06:00
+UTC. A new commit cancels the previous run of a pull request. A new commit does not cancel a run
+on `main`. The configuration file is `.github/codeql/codeql-config.yml`. The stranded branch report
+runs each Monday at 07:00 UTC.
+
+Branch protection on `main` requires the `gates / ...` checks of the quality gates,
+`build-and-push / Build the container image`, and `offline-tests`. After the first green CodeQL run
+on `main`, the owner adds `CodeQL` and `codeql / Analyze (python)` to the required checks.
 
 The repository has `documentation`, `python`, and `in-progress` labels. It has no scope labels, no
-`auto-merge` label, no CodeQL workflow, no changelog, and no pull request template.
+`auto-merge` label, no changelog, and no pull request template.
 
 ## Known pitfalls
 

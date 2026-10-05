@@ -47,11 +47,11 @@ python -m pip freeze > requirements-dev.lock.txt
 
 Compare resolved dependencies on Linux and macOS. Keep Linux-only keyring dependencies in both locks with `sys_platform == "linux"` markers. Run the offline tests and quality checks before merging a refresh.
 
-The container and offline test workflow use the runtime lock; shared quality gates install the development manifest. Bootstrap 5.3.8 and Bootstrap Icons 1.13.1 are loaded from jsDelivr. The shared workflows are pinned to the `misthelper-devtools` v0.6.0 release. Gunicorn's unused management socket is disabled because the non-root container user has no writable home directory.
+The container and offline test workflow use the runtime lock; shared quality gates install the development manifest. Bootstrap 5.3.8 and Bootstrap Icons 1.13.1 are loaded from jsDelivr. The shared workflows are pinned to the `misthelper-devtools` v0.6.2 release. Gunicorn's unused management socket is disabled because the non-root container user has no writable home directory.
 
 ## CI and releases
 
-GitHub Actions runs offline tests and shared quality gates and builds/publishes multi-architecture images to `ghcr.io/jmorrison-juniper/mistorglicensingcomparison`. The build workflow calls the pinned shared container workflow. Dependabot tracks action and shared workflow pins.
+GitHub Actions runs offline tests, shared quality gates, and the CodeQL analysis, and it builds/publishes multi-architecture images to `ghcr.io/jmorrison-juniper/mistorglicensingcomparison`. The build workflow calls the pinned shared container workflow. Dependabot tracks action and shared workflow pins.
 
 Release tags use `YY.MM.DD.HH.MM` format. Create an annotated tag with release notes to trigger the release build.
 
