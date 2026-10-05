@@ -25,5 +25,9 @@ jobs:
           node-version: '24'
       - run: python -m pip install -r requirements.lock.txt
       - run: python -m pip check
+      # The quality gates install requirements-dev.txt, not the lock file, so
+      # they miss a version conflict in requirements-dev.lock.txt (issue #24).
+      # A dry run resolves the lock and fails on a conflict.
+      - run: python -m pip install --dry-run -r requirements-dev.lock.txt
       - run: python -m unittest discover -s tests -v
       - run: node --test tests/frontend.test.cjs

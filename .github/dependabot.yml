@@ -8,6 +8,12 @@ updates:
       python:
         patterns:
           - "*"
+    ignore:
+      # radon 6.0.1, the latest radon release, requires mando<0.8. A mando
+      # 0.8 pin makes requirements-dev.lock.txt fail to install (issue #24).
+      # Remove this entry when a radon release accepts mando 0.8.
+      - dependency-name: "mando"
+        versions: [">=0.8"]
   - package-ecosystem: "docker"
     directory: "/"
     schedule:
