@@ -8,7 +8,7 @@ import logging
 import os
 
 from dotenv import load_dotenv
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, Response, jsonify, render_template, request
 
 from mist_connection import MistConnection
 
@@ -24,6 +24,15 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
+
+# The client gets these fixed messages, because exception text can expose
+# internal details (CodeQL py/stack-trace-exposure, CWE-209).
+INTERNAL_ERROR_MESSAGE = (
+    "The server could not complete the request. Examine the server log."
+)
+ORGANIZATION_ERROR_MESSAGE = (
+    "The server could not read the data for this organization. Examine the server log."
+)
 
 # Global Mist connection (lazy initialization)
 _mist_connection: MistConnection | None = None
@@ -44,6 +53,21 @@ def get_mist_connection() -> MistConnection:
         _mist_connection = MistConnection(api_token=api_token, org_id=org_id, host=host)
 
     return _mist_connection
+
+
+def internal_error_response(
+    error: Exception, action: str, *action_args: object
+) -> tuple[Response, int]:
+    """Log a failed request on the server and return a generic JSON error.
+
+    The log keeps the exception and its traceback for the operator. The client
+    gets a fixed message, so the response exposes no internal detail. The
+    action is a log template, for example "getting licenses for org %s".
+    """
+    # The action is a log template, and the values fill it, so the log stays structured.
+    logger.error("Error " + action, *action_args, exc_info=error)
+    # The response keeps the previous status code and JSON shape for the page.
+    return jsonify({"success": False, "error": INTERNAL_ERROR_MESSAGE}), 500
 
 
 @app.route("/")
@@ -70,8 +94,7 @@ def get_organizations():
         orgs = mist.get_organizations()
         return jsonify({"success": True, "data": orgs})
     except Exception as e:
-        logger.error(f"Error getting organizations: {e}")
-        return jsonify({"success": False, "error": str(e)}), 500
+        return internal_error_response(e, "getting organizations")
 
 
 @app.route("/api/organization/<org_id>")
@@ -82,8 +105,7 @@ def get_organization(org_id: str):
         org_info = mist.get_organization_info(org_id)
         return jsonify({"success": True, "data": org_info})
     except Exception as e:
-        logger.error(f"Error getting organization {org_id}: {e}")
-        return jsonify({"success": False, "error": str(e)}), 500
+        return internal_error_response(e, "getting organization %s", org_id)
 
 
 @app.route("/api/licenses/<org_id>")
@@ -94,8 +116,7 @@ def get_licenses(org_id: str):
         licenses = mist.get_org_licenses(org_id)
         return jsonify({"success": True, "data": licenses})
     except Exception as e:
-        logger.error(f"Error getting licenses for org {org_id}: {e}")
-        return jsonify({"success": False, "error": str(e)}), 500
+        return internal_error_response(e, "getting licenses for org %s", org_id)
 
 
 @app.route("/api/license-usage/<org_id>")
@@ -106,8 +127,7 @@ def get_license_usage(org_id: str):
         usage = mist.get_org_license_usage(org_id)
         return jsonify({"success": True, "data": usage})
     except Exception as e:
-        logger.error(f"Error getting license usage for org {org_id}: {e}")
-        return jsonify({"success": False, "error": str(e)}), 500
+        return internal_error_response(e, "getting license usage for org %s", org_id)
 
 
 @app.route("/api/inventory/<org_id>")
@@ -118,8 +138,7 @@ def get_inventory(org_id: str):
         counts = mist.get_org_inventory_counts(org_id)
         return jsonify({"success": True, "data": counts})
     except Exception as e:
-        logger.error(f"Error getting inventory for org {org_id}: {e}")
-        return jsonify({"success": False, "error": str(e)}), 500
+        return internal_error_response(e, "getting inventory for org %s", org_id)
 
 
 @app.route("/api/compare", methods=["POST"])
@@ -147,8 +166,7 @@ def compare_organizations():
     try:
         mist = get_mist_connection()
     except Exception as e:
-        logger.error(f"Error comparing organizations: {e}")
-        return jsonify({"success": False, "error": str(e)}), 500
+        return internal_error_response(e, "comparing organizations")
 
     results = []
     for org_id in org_ids:
@@ -167,14 +185,15 @@ def compare_organizations():
                 }
             )
         except Exception as e:
-            logger.warning(f"Error fetching data for org {org_id}: {e}")
+            # The log keeps the detail. The row gets a fixed message only.
+            logger.warning("Error fetching data for org %s", org_id, exc_info=e)
             results.append(
                 {
                     "org_id": org_id,
                     "org_name": "Error",
                     "licenses": None,
                     "inventory": None,
-                    "error": str(e),
+                    "error": ORGANIZATION_ERROR_MESSAGE,
                 }
             )
 
