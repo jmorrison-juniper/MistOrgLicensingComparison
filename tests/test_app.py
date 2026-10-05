@@ -52,11 +52,15 @@ class RouteTests(unittest.TestCase):
                     response.json, {"success": True, "data": {"fixture": 7}}
                 )
                 operation.side_effect = RuntimeError("Fixture failure")
-                response = self.client.get(endpoint)
+                with self.assertLogs(app.logger, level="ERROR") as logs:
+                    response = self.client.get(endpoint)
                 self.assertEqual(response.status_code, 500)
                 self.assertEqual(
-                    response.json, {"success": False, "error": "Fixture failure"}
+                    response.json,
+                    {"success": False, "error": app.INTERNAL_ERROR_MESSAGE},
                 )
+                self.assertNotIn("Fixture failure", response.get_data(as_text=True))
+                self.assertIn("Fixture failure", "\n".join(logs.output))
                 operation.side_effect = None
 
     def test_comparison_rejects_invalid_payloads_before_connecting(self):
@@ -91,23 +95,40 @@ class RouteTests(unittest.TestCase):
         self.mist.get_organization_info.side_effect = org_info
         self.mist.get_org_licenses.return_value = {"entitled": {"SUB-MAN": 10}}
         self.mist.get_org_inventory_counts.return_value = {"aps": 8}
-        response = self.client.post(
-            "/api/compare", json={"org_ids": ["good", "bad", "good"]}
-        )
+        with self.assertLogs(app.logger, level="WARNING"):
+            response = self.client.post(
+                "/api/compare", json={"org_ids": ["good", "bad", "good"]}
+            )
         self.assertEqual(response.status_code, 200)
         rows = response.json["data"]
         self.assertEqual([row["org_id"] for row in rows], ["good", "bad", "good"])
         self.assertEqual(rows[0]["licenses"]["entitled"]["SUB-MAN"], 10)
         self.assertEqual(rows[0]["inventory"]["aps"], 8)
         self.assertIsNone(rows[0]["error"])
-        self.assertEqual(rows[1]["error"], "Unavailable organization")
+        self.assertEqual(rows[1]["error"], app.ORGANIZATION_ERROR_MESSAGE)
+        self.assertNotIn("Unavailable organization", response.get_data(as_text=True))
         self.assertIsNone(rows[1]["inventory"])
 
     def test_initialization_failure_is_json(self):
         app.get_mist_connection.side_effect = ValueError("Missing token")
-        response = self.client.post("/api/compare", json={"org_ids": ["org1"]})
+        with self.assertLogs(app.logger, level="ERROR"):
+            response = self.client.post("/api/compare", json={"org_ids": ["org1"]})
         self.assertEqual(response.status_code, 500)
-        self.assertEqual(response.json["error"], "Missing token")
+        self.assertEqual(
+            response.json, {"success": False, "error": app.INTERNAL_ERROR_MESSAGE}
+        )
+
+    def test_error_responses_keep_exception_text_in_the_server_log_only(self):
+        """Regression for issue #25 (CodeQL py/stack-trace-exposure)."""
+        secret_detail = "Traceback detail /srv/app/mist_connection.py token=abc"
+        app.get_mist_connection.side_effect = RuntimeError(secret_detail)
+        with self.assertLogs(app.logger, level="ERROR") as logs:
+            response = self.client.get("/api/organizations")
+        self.assertEqual(response.status_code, 500)
+        self.assertNotIn(secret_detail, response.get_data(as_text=True))
+        self.assertEqual(logs.records[0].levelname, "ERROR")
+        self.assertIs(logs.records[0].exc_info[1], app.get_mist_connection.side_effect)
+        self.assertIn(secret_detail, "\n".join(logs.output))
 
 
 class ConnectionConfigurationTests(unittest.TestCase):

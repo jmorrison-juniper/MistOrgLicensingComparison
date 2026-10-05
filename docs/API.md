@@ -1,6 +1,6 @@
 # API reference
 
-The Flask application provides the following routes. JSON endpoints return a `success` flag and either `data` or an error message. Mist-backed endpoints require `MIST_API_TOKEN`.
+The Flask application provides the following routes. JSON endpoints return a `success` flag and either `data` or an error message. A server failure returns status 500 and a fixed error message. The server log holds the exception details. Mist-backed endpoints require `MIST_API_TOKEN`.
 
 | Method | Path | Description |
 | --- | --- | --- |
@@ -21,7 +21,7 @@ The compare request body is a JSON object containing a non-empty list of organiz
 }
 ```
 
-The response data contains one result per requested organization. A per-organization retrieval failure is represented in that result's `error` field; the request can still return other organizations' results.
+The response data contains one result per requested organization. A per-organization retrieval failure puts a fixed message in that result's `error` field, and the server log holds the details; the request can still return other organizations' results.
 
 The application uses these Mist API operations:
 
