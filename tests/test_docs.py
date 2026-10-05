@@ -14,7 +14,7 @@ class DocumentationTests(unittest.TestCase):
 
         self.assertEqual(
             digest,
-            "bf6d2bff3074941ecf2132acdfaa01edacdb1e7ef199961a910ebd9937021886",
+            "db663ecdfa28bd6000ca3c658bff22543791c15d3b59a3642ae181dc7c4e6d43",
         )
         self.assertIn("MistOrgLicensingComparison", specific.read_text())
         self.assertNotIn("<repository name>", specific.read_text())
