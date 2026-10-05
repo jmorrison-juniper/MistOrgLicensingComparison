@@ -44,6 +44,7 @@ responses and make no Mist API calls.
 | Frontend tests | `node --test tests/frontend.test.cjs` | All tests pass. |
 | Security | `bandit -r app.py mist_connection.py -ll` | No findings. |
 | Dependencies | `pip-audit --disable-pip --no-deps -r requirements.lock.txt` | No known vulnerabilities. |
+| Development lock | `python -m pip install --dry-run -r requirements-dev.lock.txt` | No version conflict. |
 | Complexity | `radon cc app.py mist_connection.py -j \| complexity-gate --max 15` | Each function is within the limit. |
 | Dead code | `vulture app.py mist_connection.py --min-confidence 90 --ignore-decorators @app.route` | No findings. |
 | STE with dictionary | `ste-linter --config .ste-linter.toml --min-score 80 README.md AGENTS.md .github/copilot-instructions.md` | Each file scores 80 or more. Confirm `dictionary: used`. |
@@ -130,9 +131,9 @@ UTC. A new commit cancels the previous run of a pull request. A new commit does 
 on `main`. The configuration file is `.github/codeql/codeql-config.yml`. The stranded branch report
 runs each Monday at 07:00 UTC.
 
-Branch protection on `main` requires the `gates / ...` checks of the quality gates,
-`build-and-push / Build the container image`, and `offline-tests`. After the first green CodeQL run
-on `main`, the owner adds `CodeQL` and `codeql / Analyze (python)` to the required checks.
+Branch protection on `main` requires 18 checks. They are the `gates / ...` checks of the quality
+gates, `build-and-push / Build the container image`, `offline-tests`, `CodeQL`, and
+`codeql / Analyze (python)`.
 
 The repository has `documentation`, `python`, and `in-progress` labels. It has no scope labels, no
 `auto-merge` label, no changelog, and no pull request template.
@@ -141,6 +142,9 @@ The repository has `documentation`, `python`, and `in-progress` labels. It has n
 
 - Pull request #16 fixed a Gunicorn 26 startup error. The container runs without root access. Keep
   `--no-control-socket` in the Dockerfile command.
+- radon 6.0.1 requires `mando<0.8`. Thus Dependabot does not update mando to version 0.8 or a
+  subsequent version. Remove that entry when a radon release accepts mando 0.8. Issue #24 records
+  the conflict.
 - Pull request #16 fixed inventory errors that looked like zero devices. Keep the failed-request
   test in `tests/test_mist_connection.py`.
 
