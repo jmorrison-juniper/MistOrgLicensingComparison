@@ -14,7 +14,28 @@ The screenshots use synthetic sample data in the real application UI; no Mist ac
 
 ## How
 
-Run the app locally or in a container and provide a Mist API token. See the [deployment guide](docs/DEPLOYMENT.md) to get started, the [user guide](docs/USER_GUIDE.md) for dashboard workflows, and the [API reference](docs/API.md) for endpoints.
+For a local run on macOS or Linux, install Python 3.13 and Git, then run:
+
+```bash
+git clone https://github.com/jmorrison-juniper/MistOrgLicensingComparison.git
+cd MistOrgLicensingComparison
+python3.13 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.lock.txt
+cp .env.example .env
+```
+
+Edit `.env` and set `MIST_API_TOKEN` to a token with access to the organizations you need.
+Keep the token in `.env`, which Git ignores. Start the app:
+
+```bash
+python app.py
+```
+
+Open <http://127.0.0.1:5000> in your browser.
+Warning: the app has no sign-in page. Anyone who can connect to its port can use it.
+
+See the [deployment guide](docs/DEPLOYMENT.md) for container instructions and configuration, the [user guide](docs/USER_GUIDE.md) for dashboard instructions, and the [API reference](docs/API.md) for endpoints.
 
 ## Where
 
