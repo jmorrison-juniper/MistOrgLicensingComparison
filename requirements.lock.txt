@@ -18,9 +18,9 @@ Jinja2==3.1.6
 keyring==25.7.0
 MarkupSafe==3.0.4
 mistapi==0.64.0
-more-itertools==11.1.0
+more-itertools==11.2.0
 packaging==26.3
-pycparser==3.0; sys_platform == "linux"
+pycparser==3.11; sys_platform == "linux"
 python-dotenv==1.2.4
 requests==2.34.2
 SecretStorage==3.5.0; sys_platform == "linux"
