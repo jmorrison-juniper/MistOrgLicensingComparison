@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM --platform=$TARGETPLATFORM python:3.13-slim
+FROM --platform=$TARGETPLATFORM python:3.14-slim
 
 # Build arguments
 ARG TARGETPLATFORM
