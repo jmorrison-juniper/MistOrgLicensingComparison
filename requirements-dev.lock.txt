@@ -1,6 +1,6 @@
 ast_serialize==0.12.1
 bandit==1.9.4
-black==26.10.0
+black==26.10.1
 blinker==1.9.0
 boolean.py==5.0
 CacheControl==0.14.4
