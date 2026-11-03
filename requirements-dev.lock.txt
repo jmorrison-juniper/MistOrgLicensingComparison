@@ -4,7 +4,7 @@ black==26.10.0
 blinker==1.9.0
 boolean.py==5.0
 CacheControl==0.14.4
-certifi==2026.7.22
+certifi==2026.10.18
 cffi==2.1.1; sys_platform == "linux"
 charset-normalizer==3.5.2
 click==8.5.0
